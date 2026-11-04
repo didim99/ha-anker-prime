@@ -3,8 +3,8 @@
 Home Assistant integration for Anker Prime chargers, built on the
 [anker-prime-driver](https://github.com/didim99/anker-prime-driver) library.
 
-> **Status: pre-alpha, under development.** The repository skeleton and test
-> setup exist; configuration, entities and actions are being built.
+> **Status: pre-alpha, under development.** The 250W works through the Anker
+> cloud; the 160W (Bluetooth) is not done yet.
 
 This is an unofficial project, not affiliated with or endorsed by Anker.
 
@@ -16,6 +16,40 @@ This is an unofficial project, not affiliated with or endorsed by Anker.
 | A2687 | Anker Prime 160W         | Bluetooth LE (local)                    | planned; not tested on real hardware     |
 
 Requires Home Assistant 2026.1 or later.
+
+## Features
+
+- **Setup in the UI:** sign in with an Anker account, choose the chargers;
+  one device per charger. All chargers of an account share one connection.
+  A second Anker account, with the chargers shared to it, keeps the Anker
+  app's own login untouched.
+- **Sensors:** power, voltage, current and status (idle, active, charging;
+  cable, protocol and device as attributes) per port; total power; energy per
+  port and in total for the energy dashboard; when each output's countdown
+  ends.
+- **Switches:** power per output; preferred outputs of the port-priority mode;
+  clock screensaver, holiday themes, max compatibility, device
+  identification, UFCS.
+- **Selects and numbers:** charging mode, screen timeout, knob direction, hour
+  format, clock theme, display brightness.
+- **Buttons:** refresh the settings; reset the energy counters (disabled by
+  default).
+- **Binary sensors:** over-temperature and output faults; "port charging"
+  (disabled by default).
+- **Actions** on the output switches: `anker_prime.set_schedule`,
+  `anker_prime.disable_schedule`, `anker_prime.start_countdown`,
+  `anker_prime.cancel_countdown`; on the clock screensaver switch:
+  `anker_prime.set_clock_schedule`. Output switches show their schedules and
+  countdown as attributes.
+- **Options:** the minimum interval between entity updates (default 5 s; 0
+  updates on every reading, about once a second). Energy is counted from
+  every reading either way and kept across restarts.
+- Re-authentication when Anker stops accepting the login, a repair notice
+  when a charger stays offline for 30 minutes, and diagnostics with secrets
+  removed.
+
+Features the library has not confirmed on real hardware yet are disabled by
+default; enable them on the entity page to try them.
 
 ## Installation (development)
 
@@ -30,6 +64,8 @@ Until the library is published, Home Assistant installs it from a wheel file:
    already installed.
 3. Copy `custom_components/anker_prime/` to `/config/custom_components/` and
    restart Home Assistant.
+4. Add it under Settings → Devices & services → Add integration → Anker
+   Prime.
 
 ## Development
 
@@ -45,7 +81,7 @@ docker compose run --rm library-latest  # library test suite on Python 3.14
 ```
 
 Each run installs the library from a fresh copy of its working tree, then runs
-`ruff check`, `mypy` and `pytest`; extra arguments go to pytest 
+`ruff check`, `mypy` and `pytest`; extra arguments go to pytest
 (`docker compose run --rm test-min -k flow`). Both repositories are mounted
 read-only, so runs leave no files behind. `test-latest` follows the newest
 `pytest-homeassistant-custom-component` release each time its image is rebuilt

@@ -1,0 +1,95 @@
+set_schedule:
+  target:
+    entity:
+      integration: anker_prime
+      domain: switch
+  fields:
+    slot:
+      required: true
+      selector:
+        select:
+          translation_key: schedule_slot
+          options:
+            - power_on
+            - power_off
+    time:
+      required: true
+      selector:
+        time:
+    weekdays:
+      selector:
+        select:
+          translation_key: weekday
+          multiple: true
+          options:
+            - mon
+            - tue
+            - wed
+            - thu
+            - fri
+            - sat
+            - sun
+    enabled:
+      default: true
+      selector:
+        boolean:
+
+disable_schedule:
+  target:
+    entity:
+      integration: anker_prime
+      domain: switch
+  fields:
+    slot:
+      required: true
+      selector:
+        select:
+          translation_key: schedule_slot
+          options:
+            - power_on
+            - power_off
+
+start_countdown:
+  target:
+    entity:
+      integration: anker_prime
+      domain: switch
+  fields:
+    duration:
+      required: true
+      selector:
+        duration:
+
+cancel_countdown:
+  target:
+    entity:
+      integration: anker_prime
+      domain: switch
+
+set_clock_schedule:
+  target:
+    entity:
+      integration: anker_prime
+      domain: switch
+  fields:
+    start:
+      required: true
+      selector:
+        time:
+    end:
+      required: true
+      selector:
+        time:
+    weekdays:
+      selector:
+        select:
+          translation_key: weekday
+          multiple: true
+          options:
+            - mon
+            - tue
+            - wed
+            - thu
+            - fri
+            - sat
+            - sun

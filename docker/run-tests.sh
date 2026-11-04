@@ -4,6 +4,8 @@
 #   run-tests.sh integration [pytest args]  ruff, mypy, pytest of this repo
 #   run-tests.sh library [pytest args]      ruff, mypy, pytest of the library
 #
+# Set MYPY=0 to skip mypy in integration mode (see compose.yaml).
+#
 # Both repositories are mounted read-only. The library is installed from a
 # fresh copy of its working tree on every run, so changes show up at once and
 # no build files land in the mounted folders.
@@ -38,7 +40,9 @@ case "$MODE" in
         "$PYTHON" "$HA_REPO/docker/versions.py"
         cd "$HA_REPO"
         ruff check
-        mypy
+        if [ "${MYPY:-1}" != 0 ]; then
+            mypy
+        fi
         "$PYTHON" -m pytest "$@"
         ;;
     library)

@@ -4,6 +4,7 @@
 #   docker compose run --rm test-latest     newest Home Assistant, Python 3.14
 #   docker compose run --rm library-latest  library suite on Python 3.14
 #
+# mypy runs in test-min only (see test-latest).
 # Extra arguments go to pytest, e.g. `docker compose run --rm test-min -k flow`.
 # The library working copy is expected next to this repository; set
 # LIBRARY_PATH to use another location. Rebuild test-latest with
@@ -36,6 +37,11 @@ services:
       args:
         PYTHON_IMAGE: python:3.14-slim
         REQUIREMENTS: requirements-test-latest.txt
+    # Newer Home Assistant validates with probatio and aliases voluptuous to it
+    # at run time; mypy cannot follow that alias, so types are checked against
+    # the oldest supported release (test-min) only.
+    environment:
+      MYPY: "0"
     command: ["integration"]
 
   library-latest:

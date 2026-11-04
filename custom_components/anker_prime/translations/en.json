@@ -1,0 +1,275 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Anker account",
+        "description": "Sign in with the Anker account your chargers are bound to. A second account, with the chargers shared to it, keeps the Anker app's login untouched.",
+        "data": {
+          "email": "Email",
+          "password": "Password",
+          "country": "Account country"
+        },
+        "data_description": {
+          "country": "The country chosen when the Anker account was created; it selects Anker's server."
+        }
+      },
+      "chargers": {
+        "title": "Chargers",
+        "description": "Choose the chargers to add. Each becomes a device.",
+        "data": {
+          "serials": "Chargers"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Sign in again",
+        "description": "Anker no longer accepts the stored login of {email}. Enter the account password.",
+        "data": {
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Email or password is wrong.",
+      "invalid_input": "Check the email, password and country.",
+      "cannot_connect": "Could not reach the Anker cloud.",
+      "no_selection": "Choose at least one charger.",
+      "unknown": "Unexpected error; see the log."
+    },
+    "abort": {
+      "already_configured": "This Anker account is already set up.",
+      "no_chargers": "No charger reachable through the Anker cloud is bound to this account.",
+      "reauth_successful": "Signed in again.",
+      "wrong_account": "This is a different Anker account than the one set up."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Updates",
+        "data": {
+          "update_interval": "Minimum interval between entity updates"
+        },
+        "data_description": {
+          "update_interval": "Seconds; 0 updates entities on every reading (about once a second). Energy is counted at the full rate either way."
+        }
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "over_temperature": {
+        "name": "Over-temperature"
+      },
+      "output_fault": {
+        "name": "{output} fault"
+      },
+      "port_charging": {
+        "name": "{port} charging"
+      }
+    },
+    "button": {
+      "refresh": {
+        "name": "Refresh"
+      },
+      "reset_energy": {
+        "name": "Reset energy counters"
+      }
+    },
+    "number": {
+      "brightness": {
+        "name": "Display brightness"
+      }
+    },
+    "select": {
+      "charging_mode": {
+        "name": "Charging mode",
+        "state": {
+          "ai": "AI",
+          "standard": "Standard",
+          "port_priority": "Port priority",
+          "dual_laptop": "Dual laptop",
+          "low_current": "Low current",
+          "custom": "Custom"
+        }
+      },
+      "screen_timeout": {
+        "name": "Screen timeout",
+        "state": {
+          "always_on": "Always on",
+          "30s": "30 seconds",
+          "1min": "1 minute",
+          "5min": "5 minutes",
+          "30min": "30 minutes",
+          "12h": "12 hours"
+        }
+      },
+      "knob_direction": {
+        "name": "Knob direction",
+        "state": {
+          "forward": "Forward",
+          "backward": "Backward"
+        }
+      },
+      "hour_format": {
+        "name": "Hour format",
+        "state": {
+          "12h": "12-hour",
+          "24h": "24-hour"
+        }
+      },
+      "clock_theme": {
+        "name": "Clock theme",
+        "state": {
+          "style_1": "Style 1",
+          "style_2": "Style 2",
+          "style_3": "Style 3"
+        }
+      }
+    },
+    "sensor": {
+      "port_power": {
+        "name": "{port} power"
+      },
+      "port_voltage": {
+        "name": "{port} voltage"
+      },
+      "port_current": {
+        "name": "{port} current"
+      },
+      "port_status": {
+        "name": "{port} status",
+        "state": {
+          "idle": "Idle",
+          "active": "Active",
+          "charging": "Charging"
+        }
+      },
+      "port_energy": {
+        "name": "{port} energy"
+      },
+      "total_power": {
+        "name": "Total power"
+      },
+      "total_energy": {
+        "name": "Total energy"
+      },
+      "countdown_end": {
+        "name": "{output} countdown end"
+      }
+    },
+    "switch": {
+      "output": {
+        "name": "{output} output"
+      },
+      "preferred_output": {
+        "name": "{output} preferred"
+      },
+      "clock": {
+        "name": "Clock screensaver"
+      },
+      "holiday_theme": {
+        "name": "Holiday themes"
+      },
+      "max_compatibility": {
+        "name": "Max compatibility"
+      },
+      "device_identification": {
+        "name": "Device identification"
+      },
+      "ufcs": {
+        "name": "UFCS"
+      }
+    }
+  },
+  "issues": {
+    "charger_offline": {
+      "title": "{name} is offline",
+      "description": "No readings have arrived from {name} for more than 30 minutes. Check that the charger is powered and connected to Wi-Fi. This notice disappears when it is back."
+    }
+  },
+  "selector": {
+    "schedule_slot": {
+      "options": {
+        "power_on": "Power on",
+        "power_off": "Power off"
+      }
+    },
+    "weekday": {
+      "options": {
+        "mon": "Monday",
+        "tue": "Tuesday",
+        "wed": "Wednesday",
+        "thu": "Thursday",
+        "fri": "Friday",
+        "sat": "Saturday",
+        "sun": "Sunday"
+      }
+    }
+  },
+  "services": {
+    "set_schedule": {
+      "name": "Set output schedule",
+      "description": "Sets the daily power-on or power-off time of an output.",
+      "fields": {
+        "slot": {
+          "name": "Slot",
+          "description": "Which schedule of the output."
+        },
+        "time": {
+          "name": "Time",
+          "description": "Time of day; seconds are ignored."
+        },
+        "weekdays": {
+          "name": "Weekdays",
+          "description": "Days to repeat on; none means once."
+        },
+        "enabled": {
+          "name": "Enabled",
+          "description": "Whether the schedule is active."
+        }
+      }
+    },
+    "disable_schedule": {
+      "name": "Disable output schedule",
+      "description": "Switches an output schedule off, keeping its time and days.",
+      "fields": {
+        "slot": {
+          "name": "Slot",
+          "description": "Which schedule of the output."
+        }
+      }
+    },
+    "start_countdown": {
+      "name": "Start countdown",
+      "description": "Switches the output off after the given time.",
+      "fields": {
+        "duration": {
+          "name": "Duration",
+          "description": "Up to 24 hours."
+        }
+      }
+    },
+    "cancel_countdown": {
+      "name": "Cancel countdown",
+      "description": "Cancels the output's countdown."
+    },
+    "set_clock_schedule": {
+      "name": "Set clock schedule",
+      "description": "Sets when the clock screensaver is shown. Target the clock screensaver switch.",
+      "fields": {
+        "start": {
+          "name": "Start",
+          "description": "Time the clock appears."
+        },
+        "end": {
+          "name": "End",
+          "description": "Time the clock disappears."
+        },
+        "weekdays": {
+          "name": "Weekdays",
+          "description": "Days to show the clock on; none means every day."
+        }
+      }
+    }
+  }
+}

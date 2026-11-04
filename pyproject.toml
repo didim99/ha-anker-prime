@@ -30,3 +30,8 @@ python_version = "3.13"
 files = ["custom_components", "tests"]
 # custom_components/ is a namespace package, as in a Home Assistant config dir.
 explicit_package_bases = true
+
+[[tool.mypy.overrides]]
+# The test plugin ships without type information.
+module = ["pytest_homeassistant_custom_component.*"]
+ignore_missing_imports = true
