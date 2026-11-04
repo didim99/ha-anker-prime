@@ -1,0 +1,5 @@
+# Newest Home Assistant: the plugin resolves to its latest release whenever the
+# image is rebuilt (docker compose build --no-cache test-latest).
+pytest-homeassistant-custom-component
+mypy~=2.4.1
+ruff~=0.17.3

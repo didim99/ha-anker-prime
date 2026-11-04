@@ -1,0 +1,4 @@
+# Oldest supported Home Assistant: 2026.1.0 (Python 3.13).
+pytest-homeassistant-custom-component==0.13.305
+mypy~=2.4.1
+ruff~=0.17.3

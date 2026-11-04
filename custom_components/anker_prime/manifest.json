@@ -1,0 +1,14 @@
+{
+  "domain": "anker_prime",
+  "name": "Anker Prime",
+  "codeowners": ["@didim99"],
+  "documentation": "https://github.com/didim99/ha-anker-prime",
+  "integration_type": "hub",
+  "iot_class": "cloud_push",
+  "issue_tracker": "https://github.com/didim99/ha-anker-prime/issues",
+  "loggers": ["ankerprime"],
+  "requirements": [
+    "anker-prime-driver @ file:///config/wheels/anker_prime_driver-0.1.0.dev0-py3-none-any.whl"
+  ],
+  "version": "0.1.0"
+}

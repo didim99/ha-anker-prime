@@ -1,0 +1,49 @@
+# Test runs, each in a fresh container (Docker Compose v2):
+#
+#   docker compose run --rm test-min        Home Assistant 2026.1, Python 3.13
+#   docker compose run --rm test-latest     newest Home Assistant, Python 3.14
+#   docker compose run --rm library-latest  library suite on Python 3.14
+#
+# Extra arguments go to pytest, e.g. `docker compose run --rm test-min -k flow`.
+# The library working copy is expected next to this repository; set
+# LIBRARY_PATH to use another location. Rebuild test-latest with
+# `docker compose build --no-cache test-latest` to move to a newer release.
+
+x-test: &test
+  volumes:
+    - .:/src/ha-anker-prime:ro
+    - ${LIBRARY_PATH:-../anker-prime-driver}:/src/anker-prime-driver:ro
+  working_dir: /src/ha-anker-prime
+
+services:
+  test-min:
+    <<: *test
+    image: ha-anker-prime-test:min
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        PYTHON_IMAGE: python:3.13-slim
+        REQUIREMENTS: requirements-test-min.txt
+    command: ["integration"]
+
+  test-latest:
+    <<: *test
+    image: ha-anker-prime-test:latest
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        PYTHON_IMAGE: python:3.14-slim
+        REQUIREMENTS: requirements-test-latest.txt
+    command: ["integration"]
+
+  library-latest:
+    <<: *test
+    image: ha-anker-prime-test:library
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        PYTHON_IMAGE: python:3.14-slim
+    command: ["library"]

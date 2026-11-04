@@ -1,0 +1,32 @@
+# Settings for the development tools only; the integration is not a package.
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = ["--strict-markers", "--strict-config", "-p", "no:cacheprovider"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.ruff]
+line-length = 85
+target-version = "py311"
+src = [".", "tests"]
+
+[tool.ruff.lint]
+# Same rules as anker-prime-driver. No "I" (isort): its fixed layout puts the
+# closing bracket of multi-line imports on its own line, which the codestyle
+# forbids.
+select = [
+    "B",   # bugbear
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "UP",  # pyupgrade (3.11 syntax)
+    "W",   # pycodestyle warnings
+]
+# Override-me stubs with an explicit `pass` are part of the codestyle.
+ignore = ["B027"]
+
+[tool.mypy]
+python_version = "3.13"
+files = ["custom_components", "tests"]
+# custom_components/ is a namespace package, as in a Home Assistant config dir.
+explicit_package_bases = true
