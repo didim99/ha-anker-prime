@@ -1,0 +1,114 @@
+# Anker Prime 250W port monitor, built from core cards only.
+# Paste into a dashboard: Edit dashboard → Add card → Manual.
+# Entity IDs assume the device is named "250W Prime" (prefix 250w_prime_).
+type: vertical-stack
+cards:
+  - type: grid
+    columns: 3
+    square: false
+    cards:
+      - type: tile
+        entity: sensor.250w_prime_total_power
+        name: Total power
+        icon: mdi:flash
+        color: amber
+      - type: tile
+        entity: sensor.250w_prime_total_energy
+        name: Energy
+        icon: mdi:lightning-bolt-circle
+        color: green
+      - type: markdown
+        content: >-
+          {%- set s = states.sensor['250w_prime_total_power'] -%}
+          {%- if s and s.state != 'unavailable' -%}
+          🟢 **Live**<br>updated {{ relative_time(s.last_reported) }} ago
+          {%- else -%}
+          🔴 **Offline**<br>{{ ('since ' ~ relative_time(s.last_changed) ~ ' ago') if s else 'no data' }}
+          {%- endif -%}
+
+  - type: grid
+    columns: 5
+    square: false
+    cards:
+      - type: tile
+        entity: switch.250w_prime_c1_output
+        name: C1
+        icon: mdi:usb-c-port
+        vertical: true
+        tap_action:
+          action: toggle
+        hold_action:
+          action: more-info
+      - type: tile
+        entity: switch.250w_prime_c2_output
+        name: C2
+        icon: mdi:usb-c-port
+        vertical: true
+        tap_action:
+          action: toggle
+        hold_action:
+          action: more-info
+      - type: tile
+        entity: switch.250w_prime_c3_output
+        name: C3
+        icon: mdi:usb-c-port
+        vertical: true
+        tap_action:
+          action: toggle
+        hold_action:
+          action: more-info
+      - type: tile
+        entity: switch.250w_prime_c4_output
+        name: C4
+        icon: mdi:usb-c-port
+        vertical: true
+        tap_action:
+          action: toggle
+        hold_action:
+          action: more-info
+      - type: tile
+        entity: switch.250w_prime_usb_a_output
+        name: USB-A
+        icon: mdi:usb-port
+        vertical: true
+        tap_action:
+          action: toggle
+        hold_action:
+          action: more-info
+
+  - type: markdown
+    content: |
+      {%- set p = '250w_prime_' -%}
+      {%- set ports = [('c1', 'c1'), ('c2', 'c2'), ('c3', 'c3'),
+                       ('c4', 'c4'), ('a1', 'usb_a'), ('a2', 'usb_a')] -%}
+      {%- macro reading(entity, unit, digits) -%}
+        {%- set value = states(entity) -%}
+        {%- if value in ['unknown', 'unavailable'] -%}—
+        {%- else -%}{{ ('%.' ~ digits ~ 'f') | format(value | float) }} {{ unit }}
+        {%- endif -%}
+      {%- endmacro %}
+      | Port | Out | Status | Voltage | Current | Power | Energy |
+      |:-----|:---:|:-------|--------:|--------:|------:|-------:|
+      {% for port, output in ports -%}
+      {%- set status = states('sensor.' ~ p ~ port ~ '_status') -%}
+      {%- set power = states('sensor.' ~ p ~ port ~ '_power') | float(0) -%}
+      {%- set out = states('switch.' ~ p ~ output ~ '_output') -%}
+      | **{{ port | upper }}** | {{ '🟢' if out == 'on' else ('⚫' if out == 'off' else '—') }} | {{ '⚡ ' if status == 'charging' else '' }}{{ state_translated('sensor.' ~ p ~ port ~ '_status') if status not in ['unknown', 'unavailable'] else '—' }} | {{ reading('sensor.' ~ p ~ port ~ '_voltage', 'V', 2) }} | {{ reading('sensor.' ~ p ~ port ~ '_current', 'A', 2) }} | {{ ('**' ~ reading('sensor.' ~ p ~ port ~ '_power', 'W', 1) ~ '**') if power > 0 else reading('sensor.' ~ p ~ port ~ '_power', 'W', 1) }} | {{ reading('sensor.' ~ p ~ port ~ '_energy', 'Wh', 2) }} |
+      {% endfor %}
+
+  - type: history-graph
+    title: Power, last 6 hours
+    hours_to_show: 6
+    entities:
+      - entity: sensor.250w_prime_c1_power
+        name: C1
+      - entity: sensor.250w_prime_c2_power
+        name: C2
+      - entity: sensor.250w_prime_c3_power
+        name: C3
+      - entity: sensor.250w_prime_c4_power
+        name: C4
+      - entity: sensor.250w_prime_a1_power
+        name: A1
+      - entity: sensor.250w_prime_a2_power
+        name: A2

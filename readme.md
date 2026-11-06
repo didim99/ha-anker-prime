@@ -10,10 +10,10 @@ This is an unofficial project, not affiliated with or endorsed by Anker.
 
 ## Supported chargers
 
-| Model | Name                     | Connection                              | Notes                                    |
+| Model | Name                     | Connection                              | Notes                                       |
 |-------|--------------------------|-----------------------------------------|------------------------------------------|
-| A2345 | Anker Prime Charger 250W | Anker cloud (account + MQTT over Wi-Fi) | needs the charger bound in the Anker app |
-| A2687 | Anker Prime 160W         | Bluetooth LE (local)                    | planned; not tested on real hardware     |
+| A2345 | Anker Prime Charger 250W | Anker cloud (account + MQTT over Wi-Fi) | needs the charger bound in the Anker app    |
+| A2687 | Anker Prime 160W         | Bluetooth LE (local)                    | planned; not tested on real hardware        |
 
 Requires Home Assistant 2026.1 or later.
 
@@ -50,6 +50,33 @@ Requires Home Assistant 2026.1 or later.
 
 Features the library has not confirmed on real hardware yet are disabled by
 default; enable them on the entity page to try them.
+
+## Dashboard examples
+
+Two ready-made port monitors for a 250W. Paste a file into a dashboard
+(Edit dashboard → Add card → Manual). Entity IDs follow the device name; the
+examples use a device named "250W Prime", so replace the `250w_prime_`
+prefix with yours (see any entity's settings for its ID).
+
+### Port cards with button-card
+
+[`docs/cards/ports-button-card.yaml`](docs/cards/ports-button-card.yaml)
+needs [button-card](https://github.com/custom-cards/button-card) (HACS,
+version 4). One card per port shows its status, power, voltage, current and
+energy, with a bar for power against the port's maximum; color shows the
+state (charging, active, idle, output off). Tap a port for its power history,
+hold it for the output switch with schedules and countdown. Above them: total
+power, total energy and a reset button (it asks before resetting).
+
+![Port cards with button-card](docs/images/ports-button-card.png)
+
+### Core cards only
+
+[`docs/cards/ports-core-cards.yaml`](docs/cards/ports-core-cards.yaml) needs
+nothing extra: tiles for total power, energy and whether the charger is live,
+a button per output, a table of all ports and a power graph.
+
+![Core cards only](docs/images/ports-core-cards.png)
 
 ## Installation (development)
 

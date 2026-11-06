@@ -1,0 +1,895 @@
+# Anker Prime 250W port monitor.
+# Needs button-card (HACS: "button-card" by custom-cards, 4.x).
+# Paste into a dashboard: Edit dashboard → Add card → Manual.
+# Entity IDs assume the device is named "250W Prime" (prefix 250w_prime_).
+type: vertical-stack
+cards:
+  - type: grid
+    columns: 3
+    square: false
+    cards:
+      - type: tile
+        entity: sensor.250w_prime_total_power
+        name: Total power
+        icon: mdi:flash
+        color: amber
+      - type: tile
+        entity: sensor.250w_prime_total_energy
+        name: Energy
+        icon: mdi:lightning-bolt-circle
+        color: green
+      # Reset energy: shows when it was last pressed; just the name until then.
+      - type: conditional
+        conditions:
+          - condition: state
+            entity: button.250w_prime_reset_energy_counters
+            state: unknown
+        card:
+          type: tile
+          entity: button.250w_prime_reset_energy_counters
+          name: Reset energy
+          icon: mdi:restore
+          color: red
+          hide_state: true
+          tap_action:
+            action: perform-action
+            perform_action: button.press
+            target:
+              entity_id: button.250w_prime_reset_energy_counters
+            confirmation:
+              text: Reset all energy counters of the charger to zero?
+          icon_tap_action:
+            action: perform-action
+            perform_action: button.press
+            target:
+              entity_id: button.250w_prime_reset_energy_counters
+            confirmation:
+              text: Reset all energy counters of the charger to zero?
+      - type: conditional
+        conditions:
+          - condition: state
+            entity: button.250w_prime_reset_energy_counters
+            state_not: unknown
+        card:
+          type: tile
+          entity: button.250w_prime_reset_energy_counters
+          name: Reset energy
+          icon: mdi:restore
+          color: red
+          tap_action:
+            action: perform-action
+            perform_action: button.press
+            target:
+              entity_id: button.250w_prime_reset_energy_counters
+            confirmation:
+              text: Reset all energy counters of the charger to zero?
+          icon_tap_action:
+            action: perform-action
+            perform_action: button.press
+            target:
+              entity_id: button.250w_prime_reset_energy_counters
+            confirmation:
+              text: Reset all energy counters of the charger to zero?
+
+  - type: grid
+    columns: 5
+    square: false
+    cards:
+      - type: tile
+        entity: switch.250w_prime_c1_output
+        name: C1
+        icon: mdi:usb-c-port
+        vertical: true
+        tap_action:
+          action: toggle
+        hold_action:
+          action: more-info
+      - type: tile
+        entity: switch.250w_prime_c2_output
+        name: C2
+        icon: mdi:usb-c-port
+        vertical: true
+        tap_action:
+          action: toggle
+        hold_action:
+          action: more-info
+      - type: tile
+        entity: switch.250w_prime_c3_output
+        name: C3
+        icon: mdi:usb-c-port
+        vertical: true
+        tap_action:
+          action: toggle
+        hold_action:
+          action: more-info
+      - type: tile
+        entity: switch.250w_prime_c4_output
+        name: C4
+        icon: mdi:usb-c-port
+        vertical: true
+        tap_action:
+          action: toggle
+        hold_action:
+          action: more-info
+      - type: tile
+        entity: switch.250w_prime_usb_a_output
+        name: USB-A
+        icon: mdi:usb-port
+        vertical: true
+        tap_action:
+          action: toggle
+        hold_action:
+          action: more-info
+
+  - type: grid
+    columns: 2
+    square: false
+    cards:
+      - type: custom:button-card
+        entity: sensor.250w_prime_c1_power
+        name: C1
+        icon: mdi:usb-c-port
+        show_state: false
+        triggers_update:
+          - sensor.250w_prime_c1_status
+          - sensor.250w_prime_c1_voltage
+          - sensor.250w_prime_c1_current
+          - sensor.250w_prime_c1_energy
+          - switch.250w_prime_c1_output
+        variables:
+          sensor: sensor.250w_prime_c1
+          output: switch.250w_prime_c1_output
+          max_power: 140
+          # Shared by the styles below: charging, active, idle, off or offline.
+          mode: |
+            [[[
+              const st = states[variables.sensor + '_status'];
+              const out = states[variables.output];
+              if (!st || ['unknown', 'unavailable'].includes(st.state))
+                return 'offline';
+              if (out && out.state === 'off') return 'off';
+              return st.state;
+            ]]]
+          color: |
+            [[[
+              return {charging: 'var(--success-color)',
+                       active: 'var(--warning-color)',
+                       off: 'var(--error-color)'}[variables.mode]
+                || 'var(--disabled-color)';
+            ]]]
+        tap_action:
+          action: more-info
+        hold_action:
+          action: more-info
+          entity: switch.250w_prime_c1_output
+        custom_fields:
+          watts: |
+            [[[
+              const s = entity;
+              if (!s || isNaN(parseFloat(s.state))) return '—';
+              return parseFloat(s.state).toFixed(1) + ' W';
+            ]]]
+          status: |
+            [[[
+              if (variables.mode === 'offline') return 'Offline';
+              if (variables.mode === 'off') return 'Output off';
+              return hass.formatEntityState(states[variables.sensor + '_status']);
+            ]]]
+          electrical: |
+            [[[
+              const value = (suffix, unit) => {
+                const s = states[variables.sensor + suffix];
+                if (!s || isNaN(parseFloat(s.state))) return '—';
+                return parseFloat(s.state).toFixed(2) + '\u00a0' + unit;
+              };
+              return value('_voltage', 'V') + ' · ' + value('_current', 'A');
+            ]]]
+          energy: |
+            [[[
+              const s = states[variables.sensor + '_energy'];
+              if (!s || isNaN(parseFloat(s.state))) return '—';
+              return parseFloat(s.state).toFixed(2) + '\u00a0Wh';
+            ]]]
+          bar: |
+            [[[
+              const watts = parseFloat(entity ? entity.state : NaN) || 0;
+              const share = Math.min(100, watts / variables.max_power * 100);
+              return `<div style="height: 4px; border-radius: 2px;
+                        background: var(--divider-color); overflow: hidden">
+                        <div style="width: ${share}%; height: 100%;
+                          background: ${variables.color};
+                          transition: width 0.6s ease"></div></div>`;
+            ]]]
+        styles:
+          card:
+            - padding: 12px 14px 10px
+            - border-left: '[[[ return "4px solid " + variables.color ]]]'
+            - opacity: >-
+                [[[ return variables.mode === 'offline' ? 0.55 : 1 ]]]
+          grid:
+            - grid-template-areas: >-
+                "i n status watts" "i electrical electrical energy"
+                "bar bar bar bar"
+            - grid-template-columns: 30px auto 1fr auto
+            - grid-template-rows: auto auto auto
+            - column-gap: 10px
+            - row-gap: 2px
+          img_cell:
+            - justify-content: start
+            - align-items: center
+            - width: 30px
+          icon:
+            - width: 26px
+            - color: '[[[ return variables.color ]]]'
+          name:
+            - justify-self: start
+            - font-weight: 600
+            - font-size: 15px
+          custom_fields:
+            watts:
+              - justify-self: end
+              - font-size: 17px
+              - font-weight: 600
+              - white-space: nowrap
+              - font-variant-numeric: tabular-nums
+            status:
+              - justify-self: start
+              - align-self: center
+              - padding-left: 8px
+              - font-size: 12px
+              - white-space: nowrap
+              - color: '[[[ return variables.color ]]]'
+            electrical:
+              - justify-self: start
+              - font-size: 12px
+              - white-space: nowrap
+              - color: var(--secondary-text-color)
+              - font-variant-numeric: tabular-nums
+            energy:
+              - justify-self: end
+              - font-size: 12px
+              - white-space: nowrap
+              - color: var(--secondary-text-color)
+              - font-variant-numeric: tabular-nums
+            bar:
+              - margin-top: 8px
+      - type: custom:button-card
+        entity: sensor.250w_prime_c2_power
+        name: C2
+        icon: mdi:usb-c-port
+        show_state: false
+        triggers_update:
+          - sensor.250w_prime_c2_status
+          - sensor.250w_prime_c2_voltage
+          - sensor.250w_prime_c2_current
+          - sensor.250w_prime_c2_energy
+          - switch.250w_prime_c2_output
+        variables:
+          sensor: sensor.250w_prime_c2
+          output: switch.250w_prime_c2_output
+          max_power: 100
+          # Shared by the styles below: charging, active, idle, off or offline.
+          mode: |
+            [[[
+              const st = states[variables.sensor + '_status'];
+              const out = states[variables.output];
+              if (!st || ['unknown', 'unavailable'].includes(st.state))
+                return 'offline';
+              if (out && out.state === 'off') return 'off';
+              return st.state;
+            ]]]
+          color: |
+            [[[
+              return {charging: 'var(--success-color)',
+                       active: 'var(--warning-color)',
+                       off: 'var(--error-color)'}[variables.mode]
+                || 'var(--disabled-color)';
+            ]]]
+        tap_action:
+          action: more-info
+        hold_action:
+          action: more-info
+          entity: switch.250w_prime_c2_output
+        custom_fields:
+          watts: |
+            [[[
+              const s = entity;
+              if (!s || isNaN(parseFloat(s.state))) return '—';
+              return parseFloat(s.state).toFixed(1) + ' W';
+            ]]]
+          status: |
+            [[[
+              if (variables.mode === 'offline') return 'Offline';
+              if (variables.mode === 'off') return 'Output off';
+              return hass.formatEntityState(states[variables.sensor + '_status']);
+            ]]]
+          electrical: |
+            [[[
+              const value = (suffix, unit) => {
+                const s = states[variables.sensor + suffix];
+                if (!s || isNaN(parseFloat(s.state))) return '—';
+                return parseFloat(s.state).toFixed(2) + '\u00a0' + unit;
+              };
+              return value('_voltage', 'V') + ' · ' + value('_current', 'A');
+            ]]]
+          energy: |
+            [[[
+              const s = states[variables.sensor + '_energy'];
+              if (!s || isNaN(parseFloat(s.state))) return '—';
+              return parseFloat(s.state).toFixed(2) + '\u00a0Wh';
+            ]]]
+          bar: |
+            [[[
+              const watts = parseFloat(entity ? entity.state : NaN) || 0;
+              const share = Math.min(100, watts / variables.max_power * 100);
+              return `<div style="height: 4px; border-radius: 2px;
+                        background: var(--divider-color); overflow: hidden">
+                        <div style="width: ${share}%; height: 100%;
+                          background: ${variables.color};
+                          transition: width 0.6s ease"></div></div>`;
+            ]]]
+        styles:
+          card:
+            - padding: 12px 14px 10px
+            - border-left: '[[[ return "4px solid " + variables.color ]]]'
+            - opacity: >-
+                [[[ return variables.mode === 'offline' ? 0.55 : 1 ]]]
+          grid:
+            - grid-template-areas: >-
+                "i n status watts" "i electrical electrical energy"
+                "bar bar bar bar"
+            - grid-template-columns: 30px auto 1fr auto
+            - grid-template-rows: auto auto auto
+            - column-gap: 10px
+            - row-gap: 2px
+          img_cell:
+            - justify-content: start
+            - align-items: center
+            - width: 30px
+          icon:
+            - width: 26px
+            - color: '[[[ return variables.color ]]]'
+          name:
+            - justify-self: start
+            - font-weight: 600
+            - font-size: 15px
+          custom_fields:
+            watts:
+              - justify-self: end
+              - font-size: 17px
+              - font-weight: 600
+              - white-space: nowrap
+              - font-variant-numeric: tabular-nums
+            status:
+              - justify-self: start
+              - align-self: center
+              - padding-left: 8px
+              - font-size: 12px
+              - white-space: nowrap
+              - color: '[[[ return variables.color ]]]'
+            electrical:
+              - justify-self: start
+              - font-size: 12px
+              - white-space: nowrap
+              - color: var(--secondary-text-color)
+              - font-variant-numeric: tabular-nums
+            energy:
+              - justify-self: end
+              - font-size: 12px
+              - white-space: nowrap
+              - color: var(--secondary-text-color)
+              - font-variant-numeric: tabular-nums
+            bar:
+              - margin-top: 8px
+      - type: custom:button-card
+        entity: sensor.250w_prime_c3_power
+        name: C3
+        icon: mdi:usb-c-port
+        show_state: false
+        triggers_update:
+          - sensor.250w_prime_c3_status
+          - sensor.250w_prime_c3_voltage
+          - sensor.250w_prime_c3_current
+          - sensor.250w_prime_c3_energy
+          - switch.250w_prime_c3_output
+        variables:
+          sensor: sensor.250w_prime_c3
+          output: switch.250w_prime_c3_output
+          max_power: 100
+          # Shared by the styles below: charging, active, idle, off or offline.
+          mode: |
+            [[[
+              const st = states[variables.sensor + '_status'];
+              const out = states[variables.output];
+              if (!st || ['unknown', 'unavailable'].includes(st.state))
+                return 'offline';
+              if (out && out.state === 'off') return 'off';
+              return st.state;
+            ]]]
+          color: |
+            [[[
+              return {charging: 'var(--success-color)',
+                       active: 'var(--warning-color)',
+                       off: 'var(--error-color)'}[variables.mode]
+                || 'var(--disabled-color)';
+            ]]]
+        tap_action:
+          action: more-info
+        hold_action:
+          action: more-info
+          entity: switch.250w_prime_c3_output
+        custom_fields:
+          watts: |
+            [[[
+              const s = entity;
+              if (!s || isNaN(parseFloat(s.state))) return '—';
+              return parseFloat(s.state).toFixed(1) + ' W';
+            ]]]
+          status: |
+            [[[
+              if (variables.mode === 'offline') return 'Offline';
+              if (variables.mode === 'off') return 'Output off';
+              return hass.formatEntityState(states[variables.sensor + '_status']);
+            ]]]
+          electrical: |
+            [[[
+              const value = (suffix, unit) => {
+                const s = states[variables.sensor + suffix];
+                if (!s || isNaN(parseFloat(s.state))) return '—';
+                return parseFloat(s.state).toFixed(2) + '\u00a0' + unit;
+              };
+              return value('_voltage', 'V') + ' · ' + value('_current', 'A');
+            ]]]
+          energy: |
+            [[[
+              const s = states[variables.sensor + '_energy'];
+              if (!s || isNaN(parseFloat(s.state))) return '—';
+              return parseFloat(s.state).toFixed(2) + '\u00a0Wh';
+            ]]]
+          bar: |
+            [[[
+              const watts = parseFloat(entity ? entity.state : NaN) || 0;
+              const share = Math.min(100, watts / variables.max_power * 100);
+              return `<div style="height: 4px; border-radius: 2px;
+                        background: var(--divider-color); overflow: hidden">
+                        <div style="width: ${share}%; height: 100%;
+                          background: ${variables.color};
+                          transition: width 0.6s ease"></div></div>`;
+            ]]]
+        styles:
+          card:
+            - padding: 12px 14px 10px
+            - border-left: '[[[ return "4px solid " + variables.color ]]]'
+            - opacity: >-
+                [[[ return variables.mode === 'offline' ? 0.55 : 1 ]]]
+          grid:
+            - grid-template-areas: >-
+                "i n status watts" "i electrical electrical energy"
+                "bar bar bar bar"
+            - grid-template-columns: 30px auto 1fr auto
+            - grid-template-rows: auto auto auto
+            - column-gap: 10px
+            - row-gap: 2px
+          img_cell:
+            - justify-content: start
+            - align-items: center
+            - width: 30px
+          icon:
+            - width: 26px
+            - color: '[[[ return variables.color ]]]'
+          name:
+            - justify-self: start
+            - font-weight: 600
+            - font-size: 15px
+          custom_fields:
+            watts:
+              - justify-self: end
+              - font-size: 17px
+              - font-weight: 600
+              - white-space: nowrap
+              - font-variant-numeric: tabular-nums
+            status:
+              - justify-self: start
+              - align-self: center
+              - padding-left: 8px
+              - font-size: 12px
+              - white-space: nowrap
+              - color: '[[[ return variables.color ]]]'
+            electrical:
+              - justify-self: start
+              - font-size: 12px
+              - white-space: nowrap
+              - color: var(--secondary-text-color)
+              - font-variant-numeric: tabular-nums
+            energy:
+              - justify-self: end
+              - font-size: 12px
+              - white-space: nowrap
+              - color: var(--secondary-text-color)
+              - font-variant-numeric: tabular-nums
+            bar:
+              - margin-top: 8px
+      - type: custom:button-card
+        entity: sensor.250w_prime_c4_power
+        name: C4
+        icon: mdi:usb-c-port
+        show_state: false
+        triggers_update:
+          - sensor.250w_prime_c4_status
+          - sensor.250w_prime_c4_voltage
+          - sensor.250w_prime_c4_current
+          - sensor.250w_prime_c4_energy
+          - switch.250w_prime_c4_output
+        variables:
+          sensor: sensor.250w_prime_c4
+          output: switch.250w_prime_c4_output
+          max_power: 100
+          # Shared by the styles below: charging, active, idle, off or offline.
+          mode: |
+            [[[
+              const st = states[variables.sensor + '_status'];
+              const out = states[variables.output];
+              if (!st || ['unknown', 'unavailable'].includes(st.state))
+                return 'offline';
+              if (out && out.state === 'off') return 'off';
+              return st.state;
+            ]]]
+          color: |
+            [[[
+              return {charging: 'var(--success-color)',
+                       active: 'var(--warning-color)',
+                       off: 'var(--error-color)'}[variables.mode]
+                || 'var(--disabled-color)';
+            ]]]
+        tap_action:
+          action: more-info
+        hold_action:
+          action: more-info
+          entity: switch.250w_prime_c4_output
+        custom_fields:
+          watts: |
+            [[[
+              const s = entity;
+              if (!s || isNaN(parseFloat(s.state))) return '—';
+              return parseFloat(s.state).toFixed(1) + ' W';
+            ]]]
+          status: |
+            [[[
+              if (variables.mode === 'offline') return 'Offline';
+              if (variables.mode === 'off') return 'Output off';
+              return hass.formatEntityState(states[variables.sensor + '_status']);
+            ]]]
+          electrical: |
+            [[[
+              const value = (suffix, unit) => {
+                const s = states[variables.sensor + suffix];
+                if (!s || isNaN(parseFloat(s.state))) return '—';
+                return parseFloat(s.state).toFixed(2) + '\u00a0' + unit;
+              };
+              return value('_voltage', 'V') + ' · ' + value('_current', 'A');
+            ]]]
+          energy: |
+            [[[
+              const s = states[variables.sensor + '_energy'];
+              if (!s || isNaN(parseFloat(s.state))) return '—';
+              return parseFloat(s.state).toFixed(2) + '\u00a0Wh';
+            ]]]
+          bar: |
+            [[[
+              const watts = parseFloat(entity ? entity.state : NaN) || 0;
+              const share = Math.min(100, watts / variables.max_power * 100);
+              return `<div style="height: 4px; border-radius: 2px;
+                        background: var(--divider-color); overflow: hidden">
+                        <div style="width: ${share}%; height: 100%;
+                          background: ${variables.color};
+                          transition: width 0.6s ease"></div></div>`;
+            ]]]
+        styles:
+          card:
+            - padding: 12px 14px 10px
+            - border-left: '[[[ return "4px solid " + variables.color ]]]'
+            - opacity: >-
+                [[[ return variables.mode === 'offline' ? 0.55 : 1 ]]]
+          grid:
+            - grid-template-areas: >-
+                "i n status watts" "i electrical electrical energy"
+                "bar bar bar bar"
+            - grid-template-columns: 30px auto 1fr auto
+            - grid-template-rows: auto auto auto
+            - column-gap: 10px
+            - row-gap: 2px
+          img_cell:
+            - justify-content: start
+            - align-items: center
+            - width: 30px
+          icon:
+            - width: 26px
+            - color: '[[[ return variables.color ]]]'
+          name:
+            - justify-self: start
+            - font-weight: 600
+            - font-size: 15px
+          custom_fields:
+            watts:
+              - justify-self: end
+              - font-size: 17px
+              - font-weight: 600
+              - white-space: nowrap
+              - font-variant-numeric: tabular-nums
+            status:
+              - justify-self: start
+              - align-self: center
+              - padding-left: 8px
+              - font-size: 12px
+              - white-space: nowrap
+              - color: '[[[ return variables.color ]]]'
+            electrical:
+              - justify-self: start
+              - font-size: 12px
+              - white-space: nowrap
+              - color: var(--secondary-text-color)
+              - font-variant-numeric: tabular-nums
+            energy:
+              - justify-self: end
+              - font-size: 12px
+              - white-space: nowrap
+              - color: var(--secondary-text-color)
+              - font-variant-numeric: tabular-nums
+            bar:
+              - margin-top: 8px
+      - type: custom:button-card
+        entity: sensor.250w_prime_a1_power
+        name: A1
+        icon: mdi:usb-port
+        show_state: false
+        triggers_update:
+          - sensor.250w_prime_a1_status
+          - sensor.250w_prime_a1_voltage
+          - sensor.250w_prime_a1_current
+          - sensor.250w_prime_a1_energy
+          - switch.250w_prime_usb_a_output
+        variables:
+          sensor: sensor.250w_prime_a1
+          output: switch.250w_prime_usb_a_output
+          max_power: 22.5
+          # Shared by the styles below: charging, active, idle, off or offline.
+          mode: |
+            [[[
+              const st = states[variables.sensor + '_status'];
+              const out = states[variables.output];
+              if (!st || ['unknown', 'unavailable'].includes(st.state))
+                return 'offline';
+              if (out && out.state === 'off') return 'off';
+              return st.state;
+            ]]]
+          color: |
+            [[[
+              return {charging: 'var(--success-color)',
+                       active: 'var(--warning-color)',
+                       off: 'var(--error-color)'}[variables.mode]
+                || 'var(--disabled-color)';
+            ]]]
+        tap_action:
+          action: more-info
+        hold_action:
+          action: more-info
+          entity: switch.250w_prime_usb_a_output
+        custom_fields:
+          watts: |
+            [[[
+              const s = entity;
+              if (!s || isNaN(parseFloat(s.state))) return '—';
+              return parseFloat(s.state).toFixed(1) + ' W';
+            ]]]
+          status: |
+            [[[
+              if (variables.mode === 'offline') return 'Offline';
+              if (variables.mode === 'off') return 'Output off';
+              return hass.formatEntityState(states[variables.sensor + '_status']);
+            ]]]
+          electrical: |
+            [[[
+              const value = (suffix, unit) => {
+                const s = states[variables.sensor + suffix];
+                if (!s || isNaN(parseFloat(s.state))) return '—';
+                return parseFloat(s.state).toFixed(2) + '\u00a0' + unit;
+              };
+              return value('_voltage', 'V') + ' · ' + value('_current', 'A');
+            ]]]
+          energy: |
+            [[[
+              const s = states[variables.sensor + '_energy'];
+              if (!s || isNaN(parseFloat(s.state))) return '—';
+              return parseFloat(s.state).toFixed(2) + '\u00a0Wh';
+            ]]]
+          bar: |
+            [[[
+              const watts = parseFloat(entity ? entity.state : NaN) || 0;
+              const share = Math.min(100, watts / variables.max_power * 100);
+              return `<div style="height: 4px; border-radius: 2px;
+                        background: var(--divider-color); overflow: hidden">
+                        <div style="width: ${share}%; height: 100%;
+                          background: ${variables.color};
+                          transition: width 0.6s ease"></div></div>`;
+            ]]]
+        styles:
+          card:
+            - padding: 12px 14px 10px
+            - border-left: '[[[ return "4px solid " + variables.color ]]]'
+            - opacity: >-
+                [[[ return variables.mode === 'offline' ? 0.55 : 1 ]]]
+          grid:
+            - grid-template-areas: >-
+                "i n status watts" "i electrical electrical energy"
+                "bar bar bar bar"
+            - grid-template-columns: 30px auto 1fr auto
+            - grid-template-rows: auto auto auto
+            - column-gap: 10px
+            - row-gap: 2px
+          img_cell:
+            - justify-content: start
+            - align-items: center
+            - width: 30px
+          icon:
+            - width: 26px
+            - color: '[[[ return variables.color ]]]'
+          name:
+            - justify-self: start
+            - font-weight: 600
+            - font-size: 15px
+          custom_fields:
+            watts:
+              - justify-self: end
+              - font-size: 17px
+              - font-weight: 600
+              - white-space: nowrap
+              - font-variant-numeric: tabular-nums
+            status:
+              - justify-self: start
+              - align-self: center
+              - padding-left: 8px
+              - font-size: 12px
+              - white-space: nowrap
+              - color: '[[[ return variables.color ]]]'
+            electrical:
+              - justify-self: start
+              - font-size: 12px
+              - white-space: nowrap
+              - color: var(--secondary-text-color)
+              - font-variant-numeric: tabular-nums
+            energy:
+              - justify-self: end
+              - font-size: 12px
+              - white-space: nowrap
+              - color: var(--secondary-text-color)
+              - font-variant-numeric: tabular-nums
+            bar:
+              - margin-top: 8px
+      - type: custom:button-card
+        entity: sensor.250w_prime_a2_power
+        name: A2
+        icon: mdi:usb-port
+        show_state: false
+        triggers_update:
+          - sensor.250w_prime_a2_status
+          - sensor.250w_prime_a2_voltage
+          - sensor.250w_prime_a2_current
+          - sensor.250w_prime_a2_energy
+          - switch.250w_prime_usb_a_output
+        variables:
+          sensor: sensor.250w_prime_a2
+          output: switch.250w_prime_usb_a_output
+          max_power: 22.5
+          # Shared by the styles below: charging, active, idle, off or offline.
+          mode: |
+            [[[
+              const st = states[variables.sensor + '_status'];
+              const out = states[variables.output];
+              if (!st || ['unknown', 'unavailable'].includes(st.state))
+                return 'offline';
+              if (out && out.state === 'off') return 'off';
+              return st.state;
+            ]]]
+          color: |
+            [[[
+              return {charging: 'var(--success-color)',
+                       active: 'var(--warning-color)',
+                       off: 'var(--error-color)'}[variables.mode]
+                || 'var(--disabled-color)';
+            ]]]
+        tap_action:
+          action: more-info
+        hold_action:
+          action: more-info
+          entity: switch.250w_prime_usb_a_output
+        custom_fields:
+          watts: |
+            [[[
+              const s = entity;
+              if (!s || isNaN(parseFloat(s.state))) return '—';
+              return parseFloat(s.state).toFixed(1) + ' W';
+            ]]]
+          status: |
+            [[[
+              if (variables.mode === 'offline') return 'Offline';
+              if (variables.mode === 'off') return 'Output off';
+              return hass.formatEntityState(states[variables.sensor + '_status']);
+            ]]]
+          electrical: |
+            [[[
+              const value = (suffix, unit) => {
+                const s = states[variables.sensor + suffix];
+                if (!s || isNaN(parseFloat(s.state))) return '—';
+                return parseFloat(s.state).toFixed(2) + '\u00a0' + unit;
+              };
+              return value('_voltage', 'V') + ' · ' + value('_current', 'A');
+            ]]]
+          energy: |
+            [[[
+              const s = states[variables.sensor + '_energy'];
+              if (!s || isNaN(parseFloat(s.state))) return '—';
+              return parseFloat(s.state).toFixed(2) + '\u00a0Wh';
+            ]]]
+          bar: |
+            [[[
+              const watts = parseFloat(entity ? entity.state : NaN) || 0;
+              const share = Math.min(100, watts / variables.max_power * 100);
+              return `<div style="height: 4px; border-radius: 2px;
+                        background: var(--divider-color); overflow: hidden">
+                        <div style="width: ${share}%; height: 100%;
+                          background: ${variables.color};
+                          transition: width 0.6s ease"></div></div>`;
+            ]]]
+        styles:
+          card:
+            - padding: 12px 14px 10px
+            - border-left: '[[[ return "4px solid " + variables.color ]]]'
+            - opacity: >-
+                [[[ return variables.mode === 'offline' ? 0.55 : 1 ]]]
+          grid:
+            - grid-template-areas: >-
+                "i n status watts" "i electrical electrical energy"
+                "bar bar bar bar"
+            - grid-template-columns: 30px auto 1fr auto
+            - grid-template-rows: auto auto auto
+            - column-gap: 10px
+            - row-gap: 2px
+          img_cell:
+            - justify-content: start
+            - align-items: center
+            - width: 30px
+          icon:
+            - width: 26px
+            - color: '[[[ return variables.color ]]]'
+          name:
+            - justify-self: start
+            - font-weight: 600
+            - font-size: 15px
+          custom_fields:
+            watts:
+              - justify-self: end
+              - font-size: 17px
+              - font-weight: 600
+              - white-space: nowrap
+              - font-variant-numeric: tabular-nums
+            status:
+              - justify-self: start
+              - align-self: center
+              - padding-left: 8px
+              - font-size: 12px
+              - white-space: nowrap
+              - color: '[[[ return variables.color ]]]'
+            electrical:
+              - justify-self: start
+              - font-size: 12px
+              - white-space: nowrap
+              - color: var(--secondary-text-color)
+              - font-variant-numeric: tabular-nums
+            energy:
+              - justify-self: end
+              - font-size: 12px
+              - white-space: nowrap
+              - color: var(--secondary-text-color)
+              - font-variant-numeric: tabular-nums
+            bar:
+              - margin-top: 8px
