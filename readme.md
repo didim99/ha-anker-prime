@@ -108,23 +108,40 @@ a button per output, a table of all ports and a power graph.
 
 ![Core cards only](docs/images/ports-core-cards.png)
 
-## Installation (development)
+## Installation
 
-Until the library is published, Home Assistant installs it from a wheel file:
+Requires Home Assistant 2026.1 or later. Home Assistant installs the
+[anker-prime-driver](https://pypi.org/project/anker-prime-driver/) library
+itself, in the exact version the integration pins.
 
-1. Build the library wheel (`python -m build` in `anker-prime-driver`) and copy
-   it to `/config/wheels/`.
-2. Make sure the wheel name in
-   `custom_components/anker_prime/manifest.json` matches it. Every rebuilt
-   wheel needs a new version (`0.7.2`, `0.7.3`, ...): Home Assistant hands the
-   requirement to `uv` on every start, and `uv` skips a version that is
-   already installed.
-3. Copy `custom_components/anker_prime/` to `/config/custom_components/` and
-   restart Home Assistant. The integration requires Home Assistant's
-   Bluetooth integration (loaded with it); Bluetooth support of the library
-   comes from Home Assistant's own packages.
-4. Add it under Settings → Devices & services → Add integration → Anker
+**HACS (custom repository):**
+
+1. HACS → ⋮ → Custom repositories: add
+   `https://github.com/didim99/ha-anker-prime`, type **Integration**.
+2. Find **Anker Prime** in HACS, download it and restart Home Assistant.
+3. Add it under Settings → Devices & services → Add integration → Anker
    Prime.
+
+**Manually:** copy `custom_components/anker_prime/` to
+`/config/custom_components/`, restart Home Assistant and add the integration
+as above.
+
+The integration also loads Home Assistant's Bluetooth integration, which the
+160W needs; without a Bluetooth adapter it simply stays idle.
+
+### Unreleased library versions
+
+To try library changes before they are on PyPI, build a wheel
+(`python -m build` in `anker-prime-driver`), copy it to `/config/wheels/` and
+point the manifest's requirement at it, locally only:
+
+```json
+"requirements": ["anker-prime-driver[ble] @ file:///config/wheels/anker_prime_driver-0.7.4-py3-none-any.whl"]
+```
+
+Every rebuilt wheel needs a new version: Home Assistant hands the requirement
+to `uv` on every start, and `uv` skips a version that is already installed.
+Pre-releases (`0.7.4rc1`) published to PyPI work with an exact pin as well.
 
 ## Development
 
@@ -145,7 +162,9 @@ Each run installs the library from a fresh copy of its working tree, then runs
 read-only, so runs leave no files behind. `test-latest` follows the newest
 `pytest-homeassistant-custom-component` release each time its image is rebuilt
 (`docker compose build --no-cache test-latest`); the first line of every run
-shows the versions in use.
+shows the versions in use. A test checks that the manifest pins exactly the
+library version under test: after changing the library, publish it and move
+the pin together.
 
 Formatting and import order follow the project codestyle by hand; `ruff check`
 verifies line length and common lint rules.

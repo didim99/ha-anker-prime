@@ -24,9 +24,8 @@ from tests.fakes import (
 
 
 ROOT = Path(__file__).parent.parent
-WHEEL_PATTERN = re.compile(
-    r'anker-prime-driver\[ble\] @ file:///config/wheels/'
-    r'anker_prime_driver-(?P<version>[^-]+)-py3-none-any\.whl')
+REQUIREMENT_PATTERN = re.compile(
+    r'anker-prime-driver\[ble\]==(?P<version>[0-9A-Za-z.+-]+)')
 
 
 def test_versions_in_use() -> None:
@@ -44,11 +43,15 @@ async def test_manifest_loads(hass: HomeAssistant) -> None:
 
 
 def test_manifest_requires_the_tested_library() -> None:
-    """The wheel named in the manifest is the version these tests ran with."""
+    """The manifest pins exactly the library version these tests ran with.
+
+    Fails when the library working copy moved on: publish it and move the
+    pin together.
+    """
 
     manifest = json.loads(
         (ROOT / 'custom_components' / DOMAIN / 'manifest.json').read_text())
-    matches = [WHEEL_PATTERN.fullmatch(requirement)
+    matches = [REQUIREMENT_PATTERN.fullmatch(requirement)
                for requirement in manifest['requirements']]
     versions = [match['version'] for match in matches if match]
     assert versions == [version('anker-prime-driver')]
