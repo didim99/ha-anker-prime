@@ -1,0 +1,22 @@
+# Home Assistant's and HACS's own checks, run by hand before a release
+# (Actions → Validate → Run workflow). Tests run locally in Docker instead.
+name: Validate
+
+on:
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  hassfest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: home-assistant/actions/hassfest@master
+
+  hacs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: hacs/action@main
+        with:
+          category: integration

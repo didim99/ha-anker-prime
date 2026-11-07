@@ -170,6 +170,10 @@ the pin together.
 Formatting and import order follow the project codestyle by hand; `ruff check`
 verifies line length and common lint rules.
 
+Before a release, run Home Assistant's `hassfest` and the HACS checks on
+GitHub: Actions → Validate → Run workflow. Changes are listed in
+[changelog.md](changelog.md).
+
 ## Credits
 
 The protocol knowledge comes from [Charker](https://github.com/qzz0518/Charker)
