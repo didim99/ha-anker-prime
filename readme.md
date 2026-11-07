@@ -53,6 +53,7 @@ Requires Home Assistant 2026.1 or later.
 - Re-authentication when Anker stops accepting the login, a repair notice
   when a charger stays offline for 30 minutes, and diagnostics with secrets
   removed.
+- **Languages:** English and Russian.
 
 Features the library has not confirmed on real hardware yet are disabled by
 default; enable them on the entity page to try them. Entities appear only for
