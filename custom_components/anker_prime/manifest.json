@@ -22,7 +22,7 @@
     "ankerprime"
   ],
   "requirements": [
-    "anker-prime-driver[ble] @ file:///config/wheels/anker_prime_driver-0.1.0.dev1-py3-none-any.whl"
+    "anker-prime-driver[ble] @ file:///config/wheels/anker_prime_driver-0.7.3-py3-none-any.whl"
   ],
   "version": "0.1.0"
 }

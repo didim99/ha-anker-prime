@@ -116,7 +116,7 @@ Until the library is published, Home Assistant installs it from a wheel file:
    it to `/config/wheels/`.
 2. Make sure the wheel name in
    `custom_components/anker_prime/manifest.json` matches it. Every rebuilt
-   wheel needs a new version (`0.1.0.dev1`, ...): Home Assistant hands the
+   wheel needs a new version (`0.7.2`, `0.7.3`, ...): Home Assistant hands the
    requirement to `uv` on every start, and `uv` skips a version that is
    already installed.
 3. Copy `custom_components/anker_prime/` to `/config/custom_components/` and
