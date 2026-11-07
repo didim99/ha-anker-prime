@@ -25,7 +25,7 @@ from tests.fakes import (
 
 ROOT = Path(__file__).parent.parent
 WHEEL_PATTERN = re.compile(
-    r'anker-prime-driver @ file:///config/wheels/'
+    r'anker-prime-driver\[ble\] @ file:///config/wheels/'
     r'anker_prime_driver-(?P<version>[^-]+)-py3-none-any\.whl')
 
 

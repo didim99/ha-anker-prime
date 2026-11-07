@@ -5,7 +5,8 @@ from __future__ import annotations
 from collections.abc import Awaitable
 
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
-from homeassistant.helpers.device_registry import DeviceInfo
+from homeassistant.helpers.device_registry import (
+    CONNECTION_BLUETOOTH, DeviceInfo)
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from ankerprime.interfaces.charger import Charger
@@ -35,9 +36,9 @@ class AnkerPrimeEntity(CoordinatorEntity[AnkerPrimeCoordinator]):
                  placeholders: dict[str, str] | None = None):
         super().__init__(coordinator)
         self._capability = capability
-        device = coordinator.device
+        identity = coordinator.identity
         state = coordinator.data
-        self._attr_unique_id = f'{device.serial}_{key}'
+        self._attr_unique_id = f'{identity.serial}_{key}'
         if placeholders:
             self._attr_translation_placeholders = placeholders
         if (capability is not None
@@ -45,11 +46,15 @@ class AnkerPrimeEntity(CoordinatorEntity[AnkerPrimeCoordinator]):
                 == Verification.EXPERIMENTAL):
             self._attr_entity_registry_enabled_default = False
         self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, device.serial)},
+            identifiers={(DOMAIN, identity.serial)},
             manufacturer=MANUFACTURER, model=state.product.name,
-            model_id=state.product.code.value, name=device.display_name,
-            serial_number=device.serial,
-            sw_version=state.info.firmware_version or device.software_version)
+            model_id=state.product.code.value, name=identity.name,
+            serial_number=identity.serial,
+            sw_version=(state.info.firmware_version
+                        or identity.software_version))
+        if identity.address is not None:
+            self._attr_device_info['connections'] = {
+                (CONNECTION_BLUETOOTH, identity.address)}
 
     @property
     def available(self) -> bool:

@@ -20,10 +20,16 @@ USER_INPUT = {CONF_EMAIL: EMAIL, CONF_PASSWORD: PASSWORD,
 
 
 async def start(hass: HomeAssistant) -> str:
+    """A user flow at the cloud sign-in form."""
+
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={'source': SOURCE_USER})
+    assert result['type'] is FlowResultType.MENU
+    assert result['menu_options'] == ['cloud', 'bluetooth_pick']
+    result = await hass.config_entries.flow.async_configure(
+        result['flow_id'], {'next_step_id': 'cloud'})
     assert result['type'] is FlowResultType.FORM
-    assert result['step_id'] == 'user'
+    assert result['step_id'] == 'cloud'
     return result['flow_id']
 
 
@@ -120,8 +126,8 @@ async def test_same_account_aborts(hass: HomeAssistant, cloud: FakeCloud,
 async def test_country_defaults_to_home_assistant_country(
         hass: HomeAssistant, cloud: FakeCloud) -> None:
     hass.config.country = 'GB'
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={'source': SOURCE_USER})
+    flow_id = await start(hass)
+    result = await hass.config_entries.flow.async_configure(flow_id)
     assert result['data_schema'] is not None
     schema = result['data_schema'].schema
     country = next(key for key in schema if key == CONF_COUNTRY)

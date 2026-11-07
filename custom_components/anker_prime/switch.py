@@ -68,6 +68,12 @@ SETTING_SWITCHES = (
         value_fn=lambda settings: settings.device_identification,
         set_fn=lambda charger, on: charger.set_device_identification(on)),
     SettingSwitchDescription(
+        key='auto_rotation', translation_key='auto_rotation',
+        capability=Capability.AUTO_ROTATION,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda settings: settings.display.auto_rotation,
+        set_fn=lambda charger, on: charger.set_auto_rotation(on)),
+    SettingSwitchDescription(
         key='ufcs', translation_key='ufcs', capability=Capability.UFCS,
         entity_category=EntityCategory.CONFIG,
         value_fn=lambda settings: settings.ufcs,

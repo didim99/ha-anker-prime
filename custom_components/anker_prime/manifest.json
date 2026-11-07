@@ -1,10 +1,19 @@
 {
   "domain": "anker_prime",
   "name": "Anker Prime",
+  "bluetooth": [
+    {
+      "local_name": "ASHDJW*",
+      "connectable": true
+    }
+  ],
   "codeowners": [
     "@didim99"
   ],
   "config_flow": true,
+  "dependencies": [
+    "bluetooth_adapters"
+  ],
   "documentation": "https://github.com/didim99/ha-anker-prime",
   "integration_type": "hub",
   "iot_class": "cloud_push",
@@ -13,7 +22,7 @@
     "ankerprime"
   ],
   "requirements": [
-    "anker-prime-driver @ file:///config/wheels/anker_prime_driver-0.1.0.dev0-py3-none-any.whl"
+    "anker-prime-driver[ble] @ file:///config/wheels/anker_prime_driver-0.1.0.dev1-py3-none-any.whl"
   ],
   "version": "0.1.0"
 }

@@ -1,4 +1,8 @@
-"""Charging mode, display and clock options."""
+"""Charging mode, allocation, display and clock options.
+
+The 160W never reports its display language or fixed allocation; those read
+unknown until set from Home Assistant.
+"""
 
 from __future__ import annotations
 
@@ -13,8 +17,9 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from ankerprime.interfaces.charger import Charger
 from ankerprime.model import (
-    Capability, ChargerSettings, ChargingMode, ClockTheme,
-    HourFormat, KnobDirection, Product, ScreenTimeout)
+    Capability, ChargerSettings, ChargingMode, ClockTheme, DisplayLanguage,
+    FixedAllocation, HourFormat, KnobDirection, Product, ScreenOrientation,
+    ScreenTimeout)
 
 from .coordinator import AnkerPrimeConfigEntry, AnkerPrimeCoordinator
 from .entity import AnkerPrimeEntity, creatable
@@ -64,6 +69,29 @@ SELECTS = (
         value_fn=lambda settings: settings.display.hour_format,
         set_fn=lambda charger, value: charger.set_hour_format(
             HourFormat(value))),
+    OptionSelectDescription(
+        key='fixed_allocation', translation_key='fixed_allocation',
+        capability=Capability.FIXED_ALLOCATION,
+        options_fn=lambda product: tuple(FixedAllocation),
+        value_fn=lambda settings: settings.fixed_allocation,
+        set_fn=lambda charger, value: charger.set_fixed_allocation(
+            FixedAllocation(value))),
+    OptionSelectDescription(
+        key='screen_orientation', translation_key='screen_orientation',
+        capability=Capability.SCREEN_ORIENTATION,
+        entity_category=EntityCategory.CONFIG,
+        options_fn=lambda product: tuple(ScreenOrientation),
+        value_fn=lambda settings: settings.display.orientation,
+        set_fn=lambda charger, value: charger.set_screen_orientation(
+            ScreenOrientation(value))),
+    OptionSelectDescription(
+        key='display_language', translation_key='display_language',
+        capability=Capability.DISPLAY_LANGUAGE,
+        entity_category=EntityCategory.CONFIG,
+        options_fn=lambda product: product.display_languages,
+        value_fn=lambda settings: settings.display.language,
+        set_fn=lambda charger, value: charger.set_display_language(
+            DisplayLanguage(value))),
     OptionSelectDescription(
         key='clock_theme', translation_key='clock_theme',
         capability=Capability.CLOCK_SCREENSAVER,

@@ -2,6 +2,14 @@
   "config": {
     "step": {
       "user": {
+        "title": "Add Anker Prime chargers",
+        "description": "Choose how the chargers are reached.",
+        "menu_options": {
+          "cloud": "Anker account (Prime Charger 250W, over the cloud)",
+          "bluetooth_pick": "Bluetooth (Prime 160W, nearby)"
+        }
+      },
+      "cloud": {
         "title": "Anker account",
         "description": "Sign in with the Anker account your chargers are bound to. A second account, with the chargers shared to it, keeps the Anker app's login untouched.",
         "data": {
@@ -26,21 +34,52 @@
         "data": {
           "password": "Password"
         }
+      },
+      "bluetooth_pick": {
+        "title": "Bluetooth charger",
+        "description": "Chargers advertising near your Bluetooth adapters and proxies.",
+        "data": {
+          "address": "Charger"
+        }
+      },
+      "bluetooth_confirm": {
+        "title": "Anker Prime 160W",
+        "description": "Home Assistant connects to the charger at {address} once to check access. Close the Anker app first: the charger accepts one Bluetooth connection at a time, and while Home Assistant keeps it connected the app cannot reach it (see the options).",
+        "data": {
+          "owner_id": "Owner account ID",
+          "country": "Account country"
+        },
+        "data_description": {
+          "owner_id": "User ID of the Anker account the charger is bound to (shown by the anker-prime-driver CLI after login, and prefilled from a configured Anker account). Newer firmware only accepts this account; leave empty to try without.",
+          "country": "Country of that Anker account."
+        }
+      },
+      "reauth_owner": {
+        "title": "Charger refuses access",
+        "description": "{name} refuses the identity Home Assistant uses and sends no data. Enter the user ID of the Anker account the charger is bound to.",
+        "data": {
+          "owner_id": "Owner account ID"
+        }
       }
     },
     "error": {
       "invalid_auth": "Email or password is wrong.",
       "invalid_input": "Check the email, password and country.",
-      "cannot_connect": "Could not reach the Anker cloud.",
+      "cannot_connect": "Could not reach the Anker cloud or the charger.",
       "no_selection": "Choose at least one charger.",
-      "unknown": "Unexpected error; see the log."
+      "unknown": "Unexpected error; see the log.",
+      "not_in_range": "The charger is not in range of a connectable Bluetooth adapter or proxy.",
+      "owner_refused": "The charger refused this identity; enter the ID of the Anker account it is bound to."
     },
     "abort": {
-      "already_configured": "This Anker account is already set up.",
+      "already_configured": "Already set up.",
       "no_chargers": "No charger reachable through the Anker cloud is bound to this account.",
       "reauth_successful": "Signed in again.",
-      "wrong_account": "This is a different Anker account than the one set up."
-    }
+      "wrong_account": "This is a different Anker account than the one set up.",
+      "no_devices_found": "No Anker Prime 160W found nearby. Check that it is powered, that the Anker app is closed, and that a Bluetooth adapter or proxy is in range.",
+      "wrong_charger": "The charger at this address is a different one than the one set up."
+    },
+    "flow_title": "{name}"
   },
   "options": {
     "step": {
@@ -51,6 +90,20 @@
         },
         "data_description": {
           "update_interval": "Seconds; 0 updates entities on every reading (about once a second). Energy is counted at the full rate either way."
+        }
+      },
+      "bluetooth": {
+        "title": "Connection",
+        "description": "The charger accepts one Bluetooth connection at a time. While the connection is kept open, readings are live but the Anker app cannot connect; otherwise Home Assistant connects for each read and each command, and the app can connect in between.",
+        "data": {
+          "update_interval": "Minimum interval between entity updates",
+          "keep_connection": "Keep the connection open",
+          "read_interval": "Read interval without a kept connection"
+        },
+        "data_description": {
+          "update_interval": "Seconds; 0 updates entities on every reading (about once a second). Energy is counted at the full rate either way.",
+          "keep_connection": "Live readings, about once a second.",
+          "read_interval": "Seconds between reads when the connection is not kept. Energy between reads up to two minutes apart is interpolated; longer gaps count nothing."
         }
       }
     }
@@ -124,6 +177,31 @@
           "style_2": "Style 2",
           "style_3": "Style 3"
         }
+      },
+      "fixed_allocation": {
+        "name": "Fixed allocation",
+        "state": {
+          "c1_priority": "C1 priority",
+          "dual_laptop": "Dual laptop"
+        }
+      },
+      "screen_orientation": {
+        "name": "Screen orientation",
+        "state": {
+          "up": "Up",
+          "left": "Left",
+          "down": "Down",
+          "right": "Right"
+        }
+      },
+      "display_language": {
+        "name": "Display language",
+        "state": {
+          "en": "English",
+          "zh_hans": "Chinese (simplified)",
+          "ja": "Japanese",
+          "de": "German"
+        }
       }
     },
     "sensor": {
@@ -178,6 +256,9 @@
       },
       "ufcs": {
         "name": "UFCS"
+      },
+      "auto_rotation": {
+        "name": "Auto-rotation"
       }
     }
   },
@@ -185,6 +266,10 @@
     "charger_offline": {
       "title": "{name} is offline",
       "description": "No readings have arrived from {name} for more than 30 minutes. Check that the charger is powered and connected to Wi-Fi. This notice disappears when it is back."
+    },
+    "charger_offline_bluetooth": {
+      "title": "{name} is offline",
+      "description": "No readings have arrived from {name} for more than 30 minutes. Check that the charger is powered and in range of a Bluetooth adapter or proxy, and that the Anker app is not holding the connection. This notice disappears when it is back."
     }
   },
   "selector": {

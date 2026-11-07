@@ -1,8 +1,11 @@
 """Anker Prime chargers in Home Assistant, through anker-prime-driver.
 
-One config entry per Anker account; each selected charger becomes a device
-with its own coordinator. All chargers of an account share one MQTT
-connection.
+Two entry types:
+
+- cloud: one entry per Anker account; each selected charger becomes a device
+  with its own coordinator, and all share the account's MQTT connection;
+- Bluetooth: one entry per 160W, connected through Home Assistant's
+  Bluetooth stack (local adapters or proxies).
 """
 
 from __future__ import annotations
@@ -21,9 +24,12 @@ from ankerprime.energy.store import EnergyStore
 from ankerprime.model import AnkerPrimeError, AuthenticationError
 
 from .account import async_create_account
-from .const import CONF_AUTHENTICATION, CONF_SERIALS, DOMAIN
+from .ble import create_charger, identity_from
+from .const import (
+    CONF_AUTHENTICATION, CONF_SERIAL, CONF_SERIALS, DOMAIN, is_bluetooth)
 from .coordinator import (
-    AnkerPrimeConfigEntry, AnkerPrimeCoordinator, AnkerPrimeData)
+    AnkerPrimeConfigEntry, AnkerPrimeCoordinator, AnkerPrimeData,
+    ChargerIdentity)
 from .services import async_setup_services
 from .storage import HomeAssistantStore
 
@@ -43,6 +49,16 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
 async def async_setup_entry(hass: HomeAssistant,
                             entry: AnkerPrimeConfigEntry) -> bool:
+    if is_bluetooth(entry.data):
+        await _async_setup_bluetooth(hass, entry)
+    else:
+        await _async_setup_cloud(hass, entry)
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    return True
+
+
+async def _async_setup_cloud(hass: HomeAssistant,
+                             entry: AnkerPrimeConfigEntry) -> None:
     @callback
     def remember_token(authentication: Authentication) -> None:
         data = {**entry.data,
@@ -61,8 +77,27 @@ async def async_setup_entry(hass: HomeAssistant,
         await account.close()
         raise
     entry.runtime_data = AnkerPrimeData(account, coordinators)
-    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-    return True
+
+
+async def _async_setup_bluetooth(hass: HomeAssistant,
+                                 entry: AnkerPrimeConfigEntry) -> None:
+    try:
+        charger = create_charger(hass, entry.data, entry.options)
+    except AnkerPrimeError as error:
+        raise ConfigEntryNotReady(str(error)) from error
+    coordinator = AnkerPrimeCoordinator(hass, entry, charger,
+                                        identity_from(entry.data, entry.title))
+    try:
+        await coordinator.async_start()
+    except BaseException as error:
+        await coordinator.async_close()
+        if isinstance(error, AuthenticationError):
+            raise ConfigEntryAuthFailed(str(error)) from error
+        if isinstance(error, AnkerPrimeError):
+            raise ConfigEntryNotReady(str(error)) from error
+        raise
+    entry.runtime_data = AnkerPrimeData(None, {coordinator.serial:
+                                               coordinator})
 
 
 async def async_unload_entry(hass: HomeAssistant,
@@ -72,8 +107,12 @@ async def async_unload_entry(hass: HomeAssistant,
     if unloaded:
         data = entry.runtime_data
         for coordinator in data.coordinators.values():
-            coordinator.async_stop()
-        await data.account.close()
+            if data.account is None:
+                await coordinator.async_close()
+            else:
+                coordinator.async_stop()
+        if data.account is not None:
+            await data.account.close()
     return unloaded
 
 
@@ -82,7 +121,10 @@ async def async_remove_entry(hass: HomeAssistant,
     """Delete the stored energy counters of the entry's chargers."""
 
     store = HomeAssistantStore(hass)
-    for serial in entry.data.get(CONF_SERIALS, []):
+    serials = list(entry.data.get(CONF_SERIALS, []))
+    if CONF_SERIAL in entry.data:
+        serials.append(entry.data[CONF_SERIAL])
+    for serial in serials:
         await store.delete(EnergyStore.for_serial(store, serial).key)
 
 
@@ -104,8 +146,9 @@ async def _async_start_chargers(hass: HomeAssistant,
             logger.warning('Charger ...%s is no longer bound to %s; skipped',
                            serial[-4:], entry.title)
             continue
-        coordinator = AnkerPrimeCoordinator(hass, entry,
-                                            account.charger(device), device)
+        coordinator = AnkerPrimeCoordinator(
+            hass, entry, account.charger(device),
+            ChargerIdentity.from_bound_device(device))
         coordinators[serial] = coordinator
     try:
         for coordinator in coordinators.values():

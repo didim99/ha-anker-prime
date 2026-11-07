@@ -4,34 +4,40 @@ Home Assistant integration for Anker Prime chargers, built on the
 [anker-prime-driver](https://github.com/didim99/anker-prime-driver) library.
 
 > **Status: pre-alpha, under development.** The 250W works through the Anker
-> cloud; the 160W (Bluetooth) is not done yet.
+> cloud. The 160W works over Bluetooth in tests but has not been tried on a
+> real charger yet.
 
 This is an unofficial project, not affiliated with or endorsed by Anker.
 
 ## Supported chargers
 
 | Model | Name                     | Connection                              | Notes                                       |
-|-------|--------------------------|-----------------------------------------|------------------------------------------|
+|-------|--------------------------|-----------------------------------------|---------------------------------------------|
 | A2345 | Anker Prime Charger 250W | Anker cloud (account + MQTT over Wi-Fi) | needs the charger bound in the Anker app    |
-| A2687 | Anker Prime 160W         | Bluetooth LE (local)                    | planned; not tested on real hardware        |
+| A2687 | Anker Prime 160W         | Bluetooth LE (local adapter or proxy)   | not tested on real hardware                 |
 
 Requires Home Assistant 2026.1 or later.
 
 ## Features
 
-- **Setup in the UI:** sign in with an Anker account, choose the chargers;
-  one device per charger. All chargers of an account share one connection.
-  A second Anker account, with the chargers shared to it, keeps the Anker
-  app's own login untouched.
+- **Setup in the UI**, two ways (Add integration → Anker Prime):
+  - **Anker account** (250W): sign in, choose the chargers; one device per
+    charger, all sharing one connection. A second Anker account, with the
+    chargers shared to it, keeps the Anker app's own login untouched.
+  - **Bluetooth** (160W): discovered automatically, or picked from the
+    chargers nearby; one entry per charger. See [160W over
+    Bluetooth](#160w-over-bluetooth).
 - **Sensors:** power, voltage, current and status (idle, active, charging;
   cable, protocol and device as attributes) per port; total power; energy per
   port and in total for the energy dashboard; when each output's countdown
   ends.
 - **Switches:** power per output; preferred outputs of the port-priority mode;
   clock screensaver, holiday themes, max compatibility, device
-  identification, UFCS.
+  identification, UFCS; display auto-rotation (160W).
 - **Selects and numbers:** charging mode, screen timeout, knob direction, hour
-  format, clock theme, display brightness.
+  format, clock theme, display brightness; on the 160W also fixed
+  allocation, screen orientation and display language (the charger does not
+  report the last two, so they read unknown until set from Home Assistant).
 - **Buttons:** refresh the settings; reset the energy counters (disabled by
   default).
 - **Binary sensors:** over-temperature and output faults; "port charging"
@@ -49,7 +55,30 @@ Requires Home Assistant 2026.1 or later.
   removed.
 
 Features the library has not confirmed on real hardware yet are disabled by
-default; enable them on the entity page to try them.
+default; enable them on the entity page to try them. Entities appear only for
+what the charger model offers.
+
+## 160W over Bluetooth
+
+Needs Home Assistant's Bluetooth integration with a connectable adapter, or an
+ESPHome Bluetooth proxy, in range of the charger. Home Assistant offers newly
+seen chargers on the integrations page; otherwise add one by hand and choose
+**Bluetooth**.
+
+- **Access check:** setup connects once and reads the charger's serial. Newer
+  firmware only accepts the Anker account the charger is bound to: enter that
+  account's user ID as the owner account ID (prefilled from a configured
+  Anker account; the library's CLI prints it after `ankerprime login`).
+  Without it such a charger refuses the session and setup says so. If the
+  charger starts refusing later, Home Assistant asks for the owner ID again.
+- **One connection at a time:** while Home Assistant holds the connection,
+  the Anker app cannot reach the charger. Close the app before setting it up.
+- **Options:** keep the connection open (default; live readings about once a
+  second), or connect only for each read (every 60 s by default, 30–3600 s)
+  and each command, which leaves room for the app in between. Energy between
+  reads up to two minutes apart is interpolated; longer gaps count nothing.
+- **Offline notice:** a repair notice appears when no readings arrive for 30
+  minutes.
 
 ## Dashboard examples
 
@@ -66,7 +95,8 @@ version 4). One card per port shows its status, power, voltage, current and
 energy, with a bar for power against the port's maximum; color shows the
 state (charging, active, idle, output off). Tap a port for its power history,
 hold it for the output switch with schedules and countdown. Above them: total
-power, total energy and a reset button (it asks before resetting).
+power, total energy and a reset button (it asks before resetting); below:
+output switches and a power graph.
 
 ![Port cards with button-card](docs/images/ports-button-card.png)
 
@@ -90,7 +120,9 @@ Until the library is published, Home Assistant installs it from a wheel file:
    requirement to `uv` on every start, and `uv` skips a version that is
    already installed.
 3. Copy `custom_components/anker_prime/` to `/config/custom_components/` and
-   restart Home Assistant.
+   restart Home Assistant. The integration requires Home Assistant's
+   Bluetooth integration (loaded with it); Bluetooth support of the library
+   comes from Home Assistant's own packages.
 4. Add it under Settings → Devices & services → Add integration → Anker
    Prime.
 

@@ -35,11 +35,28 @@ from .const import (
 logger = logging.getLogger(__name__)
 
 
+@dataclass(frozen=True)
+class ChargerIdentity:
+    """What the entry knows about a charger before it reports."""
+
+    serial: str
+    name: str
+    product_code: str
+    software_version: str | None = None
+    # Bluetooth address; None for cloud chargers.
+    address: str | None = None
+
+    @classmethod
+    def from_bound_device(cls, device: BoundDevice) -> ChargerIdentity:
+        return cls(device.serial, device.display_name, device.product_code,
+                   device.software_version)
+
+
 @dataclass
 class AnkerPrimeData:
-    """Runtime data of a config entry."""
+    """Runtime data of a config entry; no account for Bluetooth entries."""
 
-    account: CloudAccount
+    account: CloudAccount | None
     coordinators: dict[str, AnkerPrimeCoordinator]
 
 
@@ -50,7 +67,7 @@ class AnkerPrimeCoordinator(DataUpdateCoordinator[ChargerState]):
     """Throttles one charger's states for its entities."""
 
     _charger: Charger
-    _device: BoundDevice
+    _identity: ChargerIdentity
     _interval: float
 
     _latest: ChargerState
@@ -62,12 +79,12 @@ class AnkerPrimeCoordinator(DataUpdateCoordinator[ChargerState]):
     _reauth_started: bool
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry,
-                 charger: Charger, device: BoundDevice):
+                 charger: Charger, identity: ChargerIdentity):
         super().__init__(hass, logger, config_entry=entry,
-                         name=f'{DOMAIN} {device.serial[-4:]}',
+                         name=f'{DOMAIN} {identity.serial[-4:]}',
                          update_interval=None, always_update=False)
         self._charger = charger
-        self._device = device
+        self._identity = identity
         self._interval = float(entry.options.get(OPTION_UPDATE_INTERVAL,
                                                  DEFAULT_UPDATE_INTERVAL))
         self._latest = charger.state
@@ -84,15 +101,18 @@ class AnkerPrimeCoordinator(DataUpdateCoordinator[ChargerState]):
         return self._charger
 
     @property
-    def device(self) -> BoundDevice:
-        return self._device
+    def identity(self) -> ChargerIdentity:
+        return self._identity
 
     @property
     def serial(self) -> str:
-        return self._device.serial
+        return self._identity.serial
 
     async def async_start(self) -> None:
-        """Subscribe and connect; raises when the first connection fails."""
+        """Subscribe and connect; raises when the first connection fails.
+
+        A stopped coordinator must still be disconnected (``async_close``).
+        """
 
         self._unsubscribe = self._charger.subscribe(self._on_state)
         self._stop_health_check = async_track_time_interval(
@@ -109,6 +129,12 @@ class AnkerPrimeCoordinator(DataUpdateCoordinator[ChargerState]):
         self._unsubscribe = None
         self._stop_health_check = None
         self._pending = None
+
+    async def async_close(self) -> None:
+        """Stop and disconnect the charger itself (Bluetooth entries)."""
+
+        self.async_stop()
+        await self._charger.disconnect()
 
     @callback
     def _on_state(self, state: ChargerState) -> None:
@@ -166,8 +192,10 @@ class AnkerPrimeCoordinator(DataUpdateCoordinator[ChargerState]):
             ir.async_create_issue(
                 self.hass, DOMAIN, issue_id, is_fixable=False,
                 severity=ir.IssueSeverity.WARNING,
-                translation_key='charger_offline',
-                translation_placeholders={'name': self._device.display_name})
+                translation_key=('charger_offline_bluetooth'
+                                 if self._identity.address is not None
+                                 else 'charger_offline'),
+                translation_placeholders={'name': self._identity.name})
 
     @callback
     def _update_device_registry(self, state: ChargerState) -> None:

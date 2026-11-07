@@ -3,3 +3,6 @@
 pytest-homeassistant-custom-component
 mypy~=2.4.1
 ruff~=0.17.3
+# Requirements of Home Assistant's usb component, which bluetooth depends on.
+aiousbwatcher
+serialx

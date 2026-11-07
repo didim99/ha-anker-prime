@@ -14,11 +14,16 @@ from ankerprime.cloud.regions import COM_SERVER
 from ankerprime.device.base import BaseCharger
 from ankerprime.interfaces.http import HttpClient
 from ankerprime.interfaces.storage import DocumentStore
+from bleak.backends.device import BLEDevice
+from bleak.backends.scanner import AdvertisementData
+from homeassistant.components.bluetooth import BluetoothServiceInfoBleak
+
 from ankerprime.model import (
-    A2345, AuthenticationError, ChargerSettings, ChargerState, ChargingMode,
-    ClockSchedule, ClockSettings, ClockTheme, Countdown, DeviceInfo,
-    DisplaySettings, HourFormat, KnobDirection, OutputId, OutputState, PortId,
-    PortReading, Schedule, ScheduleSlot, ScreenTimeout, Weekday)
+    A2345, A2687, AuthenticationError, ChargerSettings, ChargerState,
+    ChargingMode, ClockSchedule, ClockSettings, ClockTheme, Countdown,
+    DeviceInfo, DisplayLanguage, DisplaySettings, FixedAllocation, HourFormat,
+    KnobDirection, OutputId, OutputState, PortId, PortReading, Product,
+    Schedule, ScheduleSlot, ScreenOrientation, ScreenTimeout, Weekday)
 
 
 SERIAL = 'AZVD4F12340868'
@@ -28,6 +33,10 @@ EMAIL = 'second@example.com'
 PASSWORD = 'secret'
 COUNTRY = 'US'
 NOW = datetime(2026, 11, 4, 12, 0, tzinfo=UTC)
+
+BLE_ADDRESS = 'AA:BB:CC:DD:EE:01'
+BLE_SERIAL = 'ASHDK7U1F51501771'
+BLE_NAME = 'ASHDJW1771'
 
 
 def make_authentication(user_id: str = USER_ID,
@@ -86,6 +95,39 @@ def make_state(*, available: bool = True, serial: str = SERIAL,
                         error_code=0, energy=energy, updated_at=NOW)
 
 
+def make_ble_state(*, available: bool = True,
+                   serial: str | None = BLE_SERIAL) -> ChargerState:
+    ports = {port: PortReading(port, status_code=1, voltage=20.0,
+                               current=1.0 if port == PortId.C1 else 0.0,
+                               power=20.0 if port == PortId.C1 else 0.0)
+             for port in (PortId.C1, PortId.C2, PortId.C3)}
+    outputs = {output: OutputState(output, is_on=True)
+               for output in (OutputId.C1, OutputId.C2, OutputId.C3)}
+    settings = ChargerSettings(
+        charging_mode=ChargingMode.AI,
+        display=DisplaySettings(brightness=80,
+                                screen_timeout=ScreenTimeout.ONE_MINUTE,
+                                orientation=ScreenOrientation.UP,
+                                auto_rotation=False))
+    return ChargerState(A2687,
+                        info=DeviceInfo(serial=serial,
+                                        firmware_version='v0.0.5.2'),
+                        available=available, ports=ports, outputs=outputs,
+                        settings=settings, updated_at=NOW)
+
+
+def make_service_info(address: str = BLE_ADDRESS,
+                      name: str = BLE_NAME) -> BluetoothServiceInfoBleak:
+    advertisement = AdvertisementData(
+        local_name=name, manufacturer_data={}, service_data={},
+        service_uuids=[], tx_power=None, rssi=-60, platform_data=())
+    return BluetoothServiceInfoBleak(
+        name=name, address=address, rssi=-60, manufacturer_data={},
+        service_data={}, service_uuids=[], source='local',
+        device=BLEDevice(address, name, None), advertisement=advertisement,
+        connectable=True, time=0, tx_power=None)
+
+
 class FakeCharger(BaseCharger):
     """Records commands; tests push states and set errors."""
 
@@ -94,8 +136,9 @@ class FakeCharger(BaseCharger):
     connect_error: Exception | None
     connected: bool
 
-    def __init__(self, state: ChargerState | None = None):
-        super().__init__(A2345)
+    def __init__(self, state: ChargerState | None = None,
+                 product: Product = A2345):
+        super().__init__(product)
         self.calls = []
         self.fail_with = None
         self.connect_error = None
@@ -175,6 +218,20 @@ class FakeCharger(BaseCharger):
     async def _set_ufcs(self, enabled: bool) -> None:
         self._record('set_ufcs', enabled)
 
+    async def _set_fixed_allocation(self, allocation: FixedAllocation
+                                    ) -> None:
+        self._record('set_fixed_allocation', allocation)
+
+    async def _set_screen_orientation(self, orientation: ScreenOrientation
+                                      ) -> None:
+        self._record('set_screen_orientation', orientation)
+
+    async def _set_auto_rotation(self, enabled: bool) -> None:
+        self._record('set_auto_rotation', enabled)
+
+    async def _set_display_language(self, language: DisplayLanguage) -> None:
+        self._record('set_display_language', language)
+
     def _record(self, name: str, *args: Any) -> None:
         if self.fail_with is not None:
             raise self.fail_with
@@ -252,3 +309,35 @@ class FakeCloudAccount:
             raise AuthenticationError('login failed (26108): wrong password')
         authentication = make_authentication(cls.cloud.user_id, 'token-new')
         return cls(http, authentication, credentials=credentials, **kwargs)
+
+
+class FakeBluetooth:
+    """Home Assistant's Bluetooth stack and the library's factory, faked.
+
+    Every ``ble_charger`` call returns the same charger and is recorded.
+    """
+
+    charger: FakeCharger
+    in_range: bool
+    discovered: list[BluetoothServiceInfoBleak]
+    factory_calls: list[dict[str, Any]]
+
+    def __init__(self) -> None:
+        self.charger = FakeCharger(make_ble_state(), A2687)
+        self.in_range = True
+        self.discovered = [make_service_info()]
+        self.factory_calls = []
+
+    def ble_device(self, hass: Any, address: str,
+                   connectable: bool = True) -> BLEDevice | None:
+        if not self.in_range:
+            return None
+        return BLEDevice(address, BLE_NAME, None)
+
+    def discovered_service_info(self, hass: Any, connectable: bool = True
+                                ) -> list[BluetoothServiceInfoBleak]:
+        return list(self.discovered)
+
+    def ble_charger(self, device: BLEDevice, **kwargs: Any) -> FakeCharger:
+        self.factory_calls.append({'device': device, **kwargs})
+        return self.charger
