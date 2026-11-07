@@ -1,7 +1,9 @@
-"""Charging mode, allocation, display and clock options.
+"""Charging mode, custom profile, allocation, display and clock options.
 
 The 160W never reports its display language or fixed allocation; those read
-unknown until set from Home Assistant.
+unknown until set from Home Assistant. The custom profile select applies the
+250W's profiles stored in the Anker account and carries the actions that
+save and delete them (registered in ``services.py``).
 """
 
 from __future__ import annotations
@@ -9,16 +11,19 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import Any
 
 from homeassistant.components.select import SelectEntity, SelectEntityDescription
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from ankerprime.interfaces.charger import Charger
 from ankerprime.model import (
-    Capability, ChargerSettings, ChargingMode, ClockTheme, DisplayLanguage,
-    FixedAllocation, HourFormat, KnobDirection, Product, ScreenOrientation,
+    Capability, ChargerSettings, ChargingMode, ChargingProfile, ClockTheme,
+    CustomModeRules, CustomPortLimit, DisplayLanguage, FixedAllocation,
+    HourFormat, KnobDirection, OutputId, Product, ScreenOrientation,
     ScreenTimeout)
 
 from .coordinator import AnkerPrimeConfigEntry, AnkerPrimeCoordinator
@@ -27,6 +32,10 @@ from .entity import AnkerPrimeEntity, creatable
 
 BUILTIN_CLOCK_THEMES = (ClockTheme.STYLE_1, ClockTheme.STYLE_2,
                         ClockTheme.STYLE_3)
+# Action fields with the watts of each output, in the library's port order.
+PROFILE_PORT_FIELDS = {OutputId.C1: 'c1', OutputId.C2: 'c2',
+                       OutputId.C3: 'c3', OutputId.C4: 'c4',
+                       OutputId.USB_A: 'usb_a'}
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -106,14 +115,34 @@ SELECTS = (
 async def async_setup_entry(hass: HomeAssistant, entry: AnkerPrimeConfigEntry,
                             add_entities: AddConfigEntryEntitiesCallback
                             ) -> None:
-    add_entities(
-        OptionSelect(coordinator, description)
-        for coordinator in entry.runtime_data.coordinators.values()
-        for description in SELECTS
-        if creatable(coordinator.data, description.capability))
+    entities: list[SelectEntity] = []
+    for coordinator in entry.runtime_data.coordinators.values():
+        state = coordinator.data
+        entities.extend(OptionSelect(coordinator, description)
+                        for description in SELECTS
+                        if creatable(state, description.capability))
+        if (creatable(state, Capability.CUSTOM_PROFILES)
+                and creatable(state, Capability.CUSTOM_CHARGING_MODE)):
+            entities.append(CustomProfileSelect(coordinator))
+    add_entities(entities)
 
 
-class OptionSelect(AnkerPrimeEntity, SelectEntity):
+class AnkerPrimeSelect(AnkerPrimeEntity, SelectEntity):
+    """Rejects the actions that only the custom profile select supports."""
+
+    async def async_save_custom_profile(self, number: int, **fields: Any
+                                        ) -> None:
+        raise self._unsupported_action('save_custom_profile')
+
+    async def async_delete_custom_profile(self, number: int) -> None:
+        raise self._unsupported_action('delete_custom_profile')
+
+    def _unsupported_action(self, action: str) -> ServiceValidationError:
+        return ServiceValidationError(
+            f'{self.entity_id} does not support the {action} action')
+
+
+class OptionSelect(AnkerPrimeSelect):
     """One enumerated setting; values outside the offered set read unknown."""
 
     entity_description: OptionSelectDescription
@@ -137,6 +166,96 @@ class OptionSelect(AnkerPrimeEntity, SelectEntity):
     async def async_select_option(self, option: str) -> None:
         await self.run_command(self.entity_description.set_fn(self.charger,
                                                               option))
+
+
+class CustomProfileSelect(AnkerPrimeSelect):
+    """Applies a custom profile stored in the Anker account (250W).
+
+    Options are ``"<number>: <name>"``; the profile in use is shown while
+    the charger is in custom mode. Leave custom mode with the charging mode
+    select.
+    """
+
+    _attr_translation_key = 'custom_profile'
+
+    def __init__(self, coordinator: AnkerPrimeCoordinator):
+        super().__init__(coordinator, 'custom_profile',
+                         capability=Capability.CUSTOM_PROFILES)
+
+    @property
+    def options(self) -> list[str]:
+        return [profile_option(profile) for profile
+                in self.charger_state.settings.custom_profiles or ()]
+
+    @property
+    def current_option(self) -> str | None:
+        settings = self.charger_state.settings
+        if settings.charging_mode != ChargingMode.CUSTOM:
+            return None
+        number = settings.active_profile
+        profile = (settings.custom_profile(number)
+                   if number is not None else None)
+        return profile_option(profile) if profile is not None else None
+
+    async def async_select_option(self, option: str) -> None:
+        for profile in self.charger_state.settings.custom_profiles or ():
+            if profile_option(profile) == option:
+                await self.run_command(
+                    self.charger.apply_custom_profile(profile))
+                return
+        raise ServiceValidationError(f'no stored profile {option!r}')
+
+    async def async_save_custom_profile(self, number: int, **fields: Any
+                                        ) -> None:
+        """Store a new profile or change a stored one.
+
+        A new profile starts from the Anker app's defaults; unset fields of a
+        stored one stay as they are.
+        """
+
+        rules = self._rules()
+        settings = self.charger_state.settings
+        profile = settings.custom_profile(number)
+        name = fields.get('name')
+        if profile is None:
+            profile = rules.template(number, name or f'Profile {number}')
+        elif name:
+            profile = profile.replace(name=name)
+        profile = apply_profile_fields(profile, fields)
+        await self.run_command(self.charger.save_custom_profile(profile))
+
+    async def async_delete_custom_profile(self, number: int) -> None:
+        if self.charger_state.settings.custom_profile(number) is None:
+            raise ServiceValidationError(f'no stored profile {number}')
+        await self.run_command(self.charger.delete_custom_profile(number))
+
+    def _rules(self) -> CustomModeRules:
+        rules = self.charger_state.product.custom_mode
+        if rules is None:
+            raise ServiceValidationError('custom mode is not supported')
+        return rules
+
+
+def profile_option(profile: ChargingProfile) -> str:
+    return f'{profile.number}: {profile.name}'
+
+
+def apply_profile_fields(profile: ChargingProfile, fields: dict[str, Any]
+                         ) -> ChargingProfile:
+    """Apply the action's watts and auto-exit; protocols are kept."""
+
+    for output, field in PROFILE_PORT_FIELDS.items():
+        watts = fields.get(field)
+        if watts is None:
+            continue
+        current = profile.port(output)
+        protocols = current.protocols if current is not None else ()
+        profile = profile.with_port(
+            CustomPortLimit(output, int(watts), protocols))
+    auto_exit = fields.get('auto_exit')
+    if auto_exit is not None:
+        profile = profile.replace(auto_exit=bool(auto_exit))
+    return profile
 
 
 async def _set_clock_theme(charger: Charger, value: str) -> None:

@@ -58,9 +58,12 @@ appear from Home Assistant 2026.3 on.
   ends.
 - **Switches:** power per output; preferred outputs of the port-priority mode;
   clock screensaver, holiday themes, max compatibility, device
-  identification, UFCS; display auto-rotation (160W).
+  identification, UFCS; the account's custom mode setting (Labs, 250W);
+  display auto-rotation (160W).
 - **Selects and numbers:** charging mode, screen timeout, knob direction, hour
-  format, clock theme, display brightness; on the 160W also fixed
+  format, clock theme, display brightness; on the 250W a custom profile
+  select that applies a profile stored in the Anker account (leave custom
+  mode with the charging mode select); on the 160W also fixed
   allocation, screen orientation and display language (the charger does not
   report the last two, so they read unknown until set from Home Assistant).
 - **Buttons:** refresh the settings; reset the energy counters (disabled by
@@ -70,8 +73,10 @@ appear from Home Assistant 2026.3 on.
 - **Actions** on the output switches: `anker_prime.set_schedule`,
   `anker_prime.disable_schedule`, `anker_prime.start_countdown`,
   `anker_prime.cancel_countdown`; on the clock screensaver switch:
-  `anker_prime.set_clock_schedule`. Output switches show their schedules and
-  countdown as attributes.
+  `anker_prime.set_clock_schedule`; on the custom profile select:
+  `anker_prime.save_custom_profile` (a new profile starts from the Anker
+  app's defaults) and `anker_prime.delete_custom_profile`. Output switches
+  show their schedules and countdown as attributes.
 - **Options:** the minimum interval between entity updates (default 5 s; 0
   updates on every reading, about once a second). Energy is counted from
   every reading either way and kept across restarts.

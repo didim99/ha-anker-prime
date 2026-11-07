@@ -9,6 +9,18 @@ version with every other change to the integration itself. Documentation,
 examples, test tooling and changes that only move the library pin keep the
 version.
 
+## [Unreleased]
+
+### Added
+- 250W custom charging: a custom profile select applies a profile stored in
+  the Anker account; actions `save_custom_profile` and
+  `delete_custom_profile` on it; a switch for the account's custom mode
+  setting (Labs).
+
+### Changed
+- Requires `anker-prime-driver[ble]==0.8.0`: the account is built with the
+  library's `AccountOptions`; country choices follow its `PHONE_REGIONS`.
+
 ## [0.2.3] - 2026-11-07
 
 ### Added

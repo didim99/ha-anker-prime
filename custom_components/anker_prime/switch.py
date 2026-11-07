@@ -74,6 +74,12 @@ SETTING_SWITCHES = (
         value_fn=lambda settings: settings.display.auto_rotation,
         set_fn=lambda charger, on: charger.set_auto_rotation(on)),
     SettingSwitchDescription(
+        key='custom_mode_setting', translation_key='custom_mode_setting',
+        capability=Capability.CUSTOM_PROFILES,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda settings: settings.custom_mode_enabled,
+        set_fn=lambda charger, on: charger.set_custom_mode_enabled(on)),
+    SettingSwitchDescription(
         key='ufcs', translation_key='ufcs', capability=Capability.UFCS,
         entity_category=EntityCategory.CONFIG,
         value_fn=lambda settings: settings.ufcs,

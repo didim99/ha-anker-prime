@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
-from ankerprime.api.cloud import AuthenticationListener
+from ankerprime.api.cloud import AccountOptions, AuthenticationListener
 from ankerprime.cloud.auth import AccountCredentials, Authentication
 from ankerprime.cloud.client import BoundDevice
 from ankerprime.cloud.regions import COM_SERVER
@@ -20,10 +20,10 @@ from homeassistant.components.bluetooth import BluetoothServiceInfoBleak
 
 from ankerprime.model import (
     A2345, A2687, AuthenticationError, ChargerSettings, ChargerState,
-    ChargingMode, ClockSchedule, ClockSettings, ClockTheme, Countdown,
-    DeviceInfo, DisplayLanguage, DisplaySettings, FixedAllocation, HourFormat,
-    KnobDirection, OutputId, OutputState, PortId, PortReading, Product,
-    Schedule, ScheduleSlot, ScreenOrientation, ScreenTimeout, Weekday)
+    ChargingMode, ChargingProfile, ClockSchedule, ClockSettings, ClockTheme,
+    Countdown, DeviceInfo, DisplayLanguage, DisplaySettings, FixedAllocation,
+    HourFormat, KnobDirection, OutputId, OutputState, PortId, PortReading,
+    Product, Schedule, ScheduleSlot, ScreenOrientation, ScreenTimeout, Weekday)
 
 
 SERIAL = 'AZVD4F12340868'
@@ -52,10 +52,18 @@ def make_device(serial: str = SERIAL, product_code: str = 'A2345',
                        wifi_online=True, software_version='2.1.1.6')
 
 
+def make_profile(number: int = 1, name: str = 'Desk') -> ChargingProfile:
+    rules = A2345.custom_mode
+    assert rules is not None
+    return rules.template(number, name)
+
+
 def make_state(*, available: bool = True, serial: str = SERIAL,
                energy: dict[PortId, float] | None = None,
                countdown_c2: bool = False, firmware: str = '2.1.1.6',
-               ufcs: bool | None = None) -> ChargerState:
+               ufcs: bool | None = None,
+               custom_profile: int | None = None) -> ChargerState:
+    """A 250W; ``custom_profile`` puts it in custom mode with that profile."""
     ports = {
         PortId.C1: PortReading(PortId.C1, status_code=1, voltage=20.0,
                                current=1.5, power=30.0),
@@ -74,8 +82,11 @@ def make_state(*, available: bool = True, serial: str = SERIAL,
         for output in OutputId
     }
     settings = ChargerSettings(
-        charging_mode=ChargingMode.AI, max_compatibility=False,
-        device_identification=True, ufcs=ufcs,
+        charging_mode=(ChargingMode.AI if custom_profile is None
+                       else ChargingMode.CUSTOM),
+        max_compatibility=False, device_identification=True, ufcs=ufcs,
+        custom_mode_enabled=True, active_profile=custom_profile,
+        custom_profiles=(make_profile(1, 'Desk'), make_profile(3, 'Travel')),
         display=DisplaySettings(brightness=60,
                                 screen_timeout=ScreenTimeout.FIVE_MINUTES,
                                 knob_direction=KnobDirection.FORWARD,
@@ -232,6 +243,24 @@ class FakeCharger(BaseCharger):
     async def _set_display_language(self, language: DisplayLanguage) -> None:
         self._record('set_display_language', language)
 
+    async def _apply_custom_profile(self, profile: ChargingProfile) -> None:
+        self._record('apply_custom_profile', profile)
+
+    async def _exit_custom_mode(self) -> None:
+        self._record('exit_custom_mode')
+
+    async def _set_custom_mode_enabled(self, enabled: bool) -> None:
+        self._record('set_custom_mode_enabled', enabled)
+
+    async def _save_custom_profile(self, profile: ChargingProfile) -> None:
+        self._record('save_custom_profile', profile)
+
+    async def _delete_custom_profile(self, number: int) -> None:
+        self._record('delete_custom_profile', number)
+
+    async def _reload_custom_profiles(self) -> None:
+        self._record('reload_custom_profiles')
+
     def _record(self, name: str, *args: Any) -> None:
         if self.fail_with is not None:
             raise self.fail_with
@@ -266,19 +295,20 @@ class FakeCloudAccount:
 
     authentication: Authentication
     credentials: AccountCredentials | None
+    tls_directory: Path | None
     energy_store: DocumentStore | None
     on_authentication: AuthenticationListener | None
     closed: bool
 
     def __init__(self, http: HttpClient, authentication: Authentication, *,
                  credentials: AccountCredentials | None = None,
-                 tls_directory: Path | None = None,
-                 on_authentication: AuthenticationListener | None = None,
-                 energy_store: DocumentStore | None = None, **_: Any):
+                 options: AccountOptions | None = None):
+        options = options or AccountOptions()
         self.authentication = authentication
         self.credentials = credentials
-        self.energy_store = energy_store
-        self.on_authentication = on_authentication
+        self.tls_directory = options.tls_directory
+        self.energy_store = options.energy_store
+        self.on_authentication = options.on_authentication
         self.closed = False
         self.cloud.accounts.append(self)
 
@@ -301,14 +331,16 @@ class FakeCloudAccount:
 
     @classmethod
     async def login(cls, http: HttpClient, credentials: AccountCredentials,
-                    **kwargs: Any) -> FakeCloudAccount:
+                    *, options: AccountOptions | None = None
+                    ) -> FakeCloudAccount:
         cls.cloud.logins.append(credentials)
         if cls.cloud.login_error is not None:
             raise cls.cloud.login_error
         if credentials.password != PASSWORD:
             raise AuthenticationError('login failed (26108): wrong password')
         authentication = make_authentication(cls.cloud.user_id, 'token-new')
-        return cls(http, authentication, credentials=credentials, **kwargs)
+        return cls(http, authentication, credentials=credentials,
+                   options=options)
 
 
 class FakeBluetooth:

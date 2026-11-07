@@ -202,6 +202,9 @@
           "ja": "Japanese",
           "de": "German"
         }
+      },
+      "custom_profile": {
+        "name": "Custom profile"
       }
     },
     "sensor": {
@@ -253,6 +256,9 @@
       },
       "device_identification": {
         "name": "Device identification"
+      },
+      "custom_mode_setting": {
+        "name": "Custom mode setting (Labs)"
       },
       "ufcs": {
         "name": "UFCS"
@@ -353,6 +359,54 @@
         "weekdays": {
           "name": "Weekdays",
           "description": "Days to show the clock on; none means every day."
+        }
+      }
+    },
+    "save_custom_profile": {
+      "name": "Save custom profile",
+      "description": "Stores a custom charging profile in the Anker account, or changes a stored one. A new profile starts from the Anker app's defaults; fields left out keep their values. Saving the profile in use applies the new limits. Target the custom profile select.",
+      "fields": {
+        "number": {
+          "name": "Number",
+          "description": "Profile number, 1–4."
+        },
+        "name": {
+          "name": "Name",
+          "description": "Up to 20 characters; a new profile without one is named \"Profile N\"."
+        },
+        "c1": {
+          "name": "C1",
+          "description": "Limit of C1 in watts; 0 switches it off."
+        },
+        "c2": {
+          "name": "C2",
+          "description": "Limit of C2 in watts; 0 switches it off."
+        },
+        "c3": {
+          "name": "C3",
+          "description": "Limit of C3 in watts; 0 switches it off."
+        },
+        "c4": {
+          "name": "C4",
+          "description": "Limit of C4 in watts; 0 switches it off."
+        },
+        "usb_a": {
+          "name": "USB-A",
+          "description": "Limit of the USB-A ports in watts: 0, 15 or 24."
+        },
+        "auto_exit": {
+          "name": "Auto-exit",
+          "description": "Leave custom mode once every device is unplugged."
+        }
+      }
+    },
+    "delete_custom_profile": {
+      "name": "Delete custom profile",
+      "description": "Removes a custom charging profile from the Anker account; custom mode is left first when the profile is in use. Target the custom profile select.",
+      "fields": {
+        "number": {
+          "name": "Number",
+          "description": "Profile number, 1–4."
         }
       }
     }

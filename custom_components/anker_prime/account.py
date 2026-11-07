@@ -9,7 +9,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.storage import STORAGE_DIR
 
-from ankerprime.api.cloud import AuthenticationListener, CloudAccount
+from ankerprime.api.cloud import (
+    AccountOptions, AuthenticationListener, CloudAccount)
 from ankerprime.cloud.auth import AccountCredentials, Authentication
 from ankerprime.cloud.http import AiohttpClient
 
@@ -21,8 +22,8 @@ async def async_login(hass: HomeAssistant,
                       credentials: AccountCredentials) -> CloudAccount:
     """Sign in with the credentials; raises the library's errors."""
 
-    return await CloudAccount.login(_http(hass), credentials,
-                                    tls_directory=tls_directory(hass))
+    options = AccountOptions(tls_directory=tls_directory(hass))
+    return await CloudAccount.login(_http(hass), credentials, options=options)
 
 
 async def async_create_account(hass: HomeAssistant, data: Mapping[str, Any],
@@ -38,16 +39,16 @@ async def async_create_account(hass: HomeAssistant, data: Mapping[str, Any],
     stored = data.get(CONF_AUTHENTICATION)
     authentication = (Authentication.from_document(stored)
                       if isinstance(stored, dict) else None)
-    store = HomeAssistantStore(hass)
+    options = AccountOptions(tls_directory=tls_directory(hass),
+                             energy_store=HomeAssistantStore(hass),
+                             on_authentication=on_authentication)
     if authentication is None:
-        account = await CloudAccount.login(
-            _http(hass), credentials, tls_directory=tls_directory(hass),
-            energy_store=store, on_authentication=on_authentication)
+        account = await CloudAccount.login(_http(hass), credentials,
+                                           options=options)
         on_authentication(account.authentication)
         return account
     return CloudAccount(_http(hass), authentication, credentials=credentials,
-                        tls_directory=tls_directory(hass), energy_store=store,
-                        on_authentication=on_authentication)
+                        options=options)
 
 
 def credentials_from(data: Mapping[str, Any]) -> AccountCredentials:

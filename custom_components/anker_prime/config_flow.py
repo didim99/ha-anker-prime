@@ -30,7 +30,7 @@ from ankerprime.api.ble import advertisement_match, new_client_id
 from ankerprime.api.cloud import CLOUD_PRODUCTS, CloudAccount
 from ankerprime.cloud.auth import AccountCredentials
 from ankerprime.cloud.client import BoundDevice
-from ankerprime.cloud.regions import REGIONS, UNSUPPORTED_REGIONS
+from ankerprime.cloud.regions import REGIONS, PHONE_REGIONS
 from ankerprime.model import (
     AccountRefusedError, AnkerPrimeError, AuthenticationError,
     InvalidParameterError)
@@ -368,7 +368,7 @@ def _user_schema() -> vol.Schema:
 
 def _country_selector() -> SelectSelector:
     regions = sorted(((code, name) for code, name in REGIONS.items()
-                      if code not in UNSUPPORTED_REGIONS),
+                      if code not in PHONE_REGIONS),
                      key=lambda item: item[1])
     return SelectSelector(SelectSelectorConfig(
         options=[SelectOptionDict(value=code, label=f'{name} ({code})')
@@ -412,6 +412,6 @@ def _default_country(country: str | None) -> str | None:
     if country is None:
         return None
     code = COUNTRY_ALIASES.get(country.upper(), country.upper())
-    if code in REGIONS and code not in UNSUPPORTED_REGIONS:
+    if code in REGIONS and code not in PHONE_REGIONS:
         return code
     return None

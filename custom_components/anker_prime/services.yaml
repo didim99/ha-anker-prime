@@ -93,3 +93,72 @@ set_clock_schedule:
             - fri
             - sat
             - sun
+
+save_custom_profile:
+  target:
+    entity:
+      integration: anker_prime
+      domain: select
+  fields:
+    number:
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 4
+          mode: box
+    name:
+      selector:
+        text:
+    c1:
+      selector:
+        number:
+          min: 0
+          max: 140
+          unit_of_measurement: W
+          mode: box
+    c2:
+      selector:
+        number:
+          min: 0
+          max: 140
+          unit_of_measurement: W
+          mode: box
+    c3:
+      selector:
+        number:
+          min: 0
+          max: 140
+          unit_of_measurement: W
+          mode: box
+    c4:
+      selector:
+        number:
+          min: 0
+          max: 140
+          unit_of_measurement: W
+          mode: box
+    usb_a:
+      selector:
+        number:
+          min: 0
+          max: 24
+          unit_of_measurement: W
+          mode: box
+    auto_exit:
+      selector:
+        boolean:
+
+delete_custom_profile:
+  target:
+    entity:
+      integration: anker_prime
+      domain: select
+  fields:
+    number:
+      required: true
+      selector:
+        number:
+          min: 1
+          max: 4
+          mode: box
