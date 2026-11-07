@@ -9,6 +9,12 @@ version with every other change to the integration itself. Documentation,
 examples, test tooling and changes that only move the library pin keep the
 version.
 
+## [0.2.3] - 2026-11-07
+
+### Added
+- Manifest categories (energy meters and monitoring; plugs and switches) for
+  HACS and Home Assistant's integration lists.
+
 ## [0.2.2] - 2026-11-07
 
 ### Added

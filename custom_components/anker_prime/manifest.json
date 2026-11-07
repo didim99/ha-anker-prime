@@ -7,6 +7,10 @@
       "connectable": true
     }
   ],
+  "categories": [
+    "energy.meters_monitoring",
+    "plugs_switches"
+  ],
   "codeowners": [
     "@didim99"
   ],
@@ -24,5 +28,5 @@
   "requirements": [
     "anker-prime-driver[ble]==0.7.3"
   ],
-  "version": "0.2.2"
+  "version": "0.2.3"
 }
