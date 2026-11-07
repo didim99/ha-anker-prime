@@ -3,20 +3,45 @@
 Home Assistant integration for Anker Prime chargers, built on the
 [anker-prime-driver](https://github.com/didim99/anker-prime-driver) library.
 
-> **Status: pre-alpha, under development.** The 250W works through the Anker
-> cloud. The 160W works over Bluetooth in tests but has not been tried on a
-> real charger yet.
+> [!NOTE]
+> **Status: alpha.** The 250W works through the Anker cloud, tested on real
+> hardware and used daily. The 160W works over Bluetooth in tests but has not
+> been tried on a real charger yet. Entities and options may still change
+> before 1.0; see the [changelog](changelog.md).
 
 This is an unofficial project, not affiliated with or endorsed by Anker.
 
 ## Supported chargers
 
-| Model | Name                     | Connection                              | Notes                                       |
-|-------|--------------------------|-----------------------------------------|---------------------------------------------|
-| A2345 | Anker Prime Charger 250W | Anker cloud (account + MQTT over Wi-Fi) | needs the charger bound in the Anker app    |
-| A2687 | Anker Prime 160W         | Bluetooth LE (local adapter or proxy)   | not tested on real hardware                 |
+| Model | Name                     | Connection                              | Verified on hardware              |
+|-------|--------------------------|-----------------------------------------|-----------------------------------|
+| A2345 | Anker Prime Charger 250W | Anker cloud (account + MQTT over Wi-Fi) | everything except the UFCS switch |
+| A2687 | Anker Prime 160W         | Bluetooth LE (local adapter or proxy)   | not tested on real hardware       |
 
-Requires Home Assistant 2026.1 or later.
+The 250W must be bound to an Anker account in the Anker app; accounts of
+mainland China (SMS login) are not supported.
+
+## Installation
+
+Requires Home Assistant 2026.1 or later. Home Assistant installs the
+[anker-prime-driver](https://pypi.org/project/anker-prime-driver/) library
+itself, in the exact version the integration pins.
+
+**HACS (custom repository):**
+
+1. HACS → ⋮ → Custom repositories: add
+   `https://github.com/didim99/ha-anker-prime`, type **Integration**.
+2. Find **Anker Prime** in HACS, download it and restart Home Assistant.
+3. Add it under Settings → Devices & services → Add integration → Anker
+   Prime.
+
+**Manually:** copy `custom_components/anker_prime/` to
+`/config/custom_components/`, restart Home Assistant and add the integration
+as above.
+
+The integration also loads Home Assistant's Bluetooth integration, which the
+160W needs; without a Bluetooth adapter it simply stays idle. Its icon and logo
+appear from Home Assistant 2026.3 on.
 
 ## Features
 
@@ -109,41 +134,6 @@ a button per output, a table of all ports and a power graph.
 
 ![Core cards only](docs/images/ports-core-cards.png)
 
-## Installation
-
-Requires Home Assistant 2026.1 or later. Home Assistant installs the
-[anker-prime-driver](https://pypi.org/project/anker-prime-driver/) library
-itself, in the exact version the integration pins.
-
-**HACS (custom repository):**
-
-1. HACS → ⋮ → Custom repositories: add
-   `https://github.com/didim99/ha-anker-prime`, type **Integration**.
-2. Find **Anker Prime** in HACS, download it and restart Home Assistant.
-3. Add it under Settings → Devices & services → Add integration → Anker
-   Prime.
-
-**Manually:** copy `custom_components/anker_prime/` to
-`/config/custom_components/`, restart Home Assistant and add the integration
-as above.
-
-The integration also loads Home Assistant's Bluetooth integration, which the
-160W needs; without a Bluetooth adapter it simply stays idle.
-
-### Unreleased library versions
-
-To try library changes before they are on PyPI, build a wheel
-(`python -m build` in `anker-prime-driver`), copy it to `/config/wheels/` and
-point the manifest's requirement at it, locally only:
-
-```json
-"requirements": ["anker-prime-driver[ble] @ file:///config/wheels/anker_prime_driver-0.7.4-py3-none-any.whl"]
-```
-
-Every rebuilt wheel needs a new version: Home Assistant hands the requirement
-to `uv` on every start, and `uv` skips a version that is already installed.
-Pre-releases (`0.7.4rc1`) published to PyPI work with an exact pin as well.
-
 ## Development
 
 Tests run in Docker, against the oldest supported and the newest Home
@@ -173,6 +163,21 @@ verifies line length and common lint rules.
 Before a release, run Home Assistant's `hassfest` and the HACS checks on
 GitHub: Actions → Validate → Run workflow. Changes are listed in
 [changelog.md](changelog.md).
+
+### Unreleased library versions
+
+To try library changes before they are on PyPI, build a wheel
+(`python -m build` in `anker-prime-driver`), copy it to `/config/wheels/` and
+point the manifest's requirement at it, locally only:
+
+```json
+"requirements": ["anker-prime-driver[ble] @ file:///config/wheels/anker_prime_driver-0.7.4-py3-none-any.whl"]
+```
+
+Every rebuilt wheel needs a new version: Home Assistant hands the requirement
+to `uv` on every start, and `uv` skips a version that is already installed.
+Pre-releases (`0.7.4rc1`) published to PyPI work with an exact pin as well.
+Commit only exact pins of published versions.
 
 ## Credits
 
