@@ -4,10 +4,13 @@ Home Assistant integration for Anker Prime chargers, built on the
 [anker-prime-driver](https://github.com/didim99/anker-prime-driver) library.
 
 > [!NOTE]
-> **Status: alpha.** The 250W works through the Anker cloud, tested on real
-> hardware and used daily. The 160W works over Bluetooth in tests but has not
-> been tried on a real charger yet. Entities and options may still change
-> before 1.0; see the [changelog](changelog.md).
+> [!NOTE]
+> **Status: beta for the 250W, experimental for the 160W.** The 250W works
+> through the Anker cloud and is used daily; every reversible feature passes
+> an end-to-end test on a real charger in a real Home Assistant (see
+> [Tests on a real 250W](#tests-on-a-real-250w)). The 160W and mainland China
+> accounts work in tests but have not been tried for real yet. Entities and
+> options may still change before 1.0; see the [changelog](changelog.md).
 
 This is an unofficial project, not affiliated with or endorsed by Anker.
 
@@ -35,6 +38,9 @@ itself, in the exact version the integration pins.
 2. Find **Anker Prime** in HACS, download it and restart Home Assistant.
 3. Add it under Settings → Devices & services → Add integration → Anker
    Prime.
+
+From Home Assistant 2026.11, HACS is part of Home Assistant as the
+Marketplace; add the same repository there as a custom repository.
 
 **Manually:** copy `custom_components/anker_prime/` to
 `/config/custom_components/`, restart Home Assistant and add the integration
@@ -148,6 +154,23 @@ Two ready-made port monitors for a 250W. Paste a file into a dashboard
 examples use a device named "250W Prime", so replace the `250w_prime_`
 prefix with yours (see any entity's settings for its ID).
 
+Home Assistant's Sections and masonry views show them as expected. In
+layout-card's `custom:masonry-layout` view, the column holding one can stay
+blank after the dashboard loads, until the window is resized (opening the
+sidebar or edit mode). For two fixed columns in a Sections view, use one
+section per column and stack the cards inside it; a section per card lines
+the sections up in rows, which leaves gaps under the shorter ones.
+
+```yaml
+type: sections
+max_columns: 2
+sections:
+  - type: grid
+    cards: []  # left column: an example and other cards, top to bottom
+  - type: grid
+    cards: []  # right column
+```
+
 ### Port cards with button-card
 
 [`docs/cards/ports-button-card.yaml`](docs/cards/ports-button-card.yaml)
@@ -258,17 +281,19 @@ network, with its own sign-in; the CLI's login stays valid.
 
 ### Unreleased library versions
 
-To try library changes before they are on PyPI, build a wheel
+To test library changes against a real charger before they are on PyPI,
+`pytest hardware --hardware-library=../anker-prime-driver` is the easiest
+way (see above). To run them in your own Home Assistant, build a wheel
 (`python -m build` in `anker-prime-driver`), copy it to `/config/wheels/` and
 point the manifest's requirement at it, locally only:
 
 ```json
-"requirements": ["anker-prime-driver[ble] @ file:///config/wheels/anker_prime_driver-0.7.4-py3-none-any.whl"]
+"requirements": ["anker-prime-driver[ble,pictures] @ file:///config/wheels/anker_prime_driver-0.8.2-py3-none-any.whl"]
 ```
 
 Every rebuilt wheel needs a new version: Home Assistant hands the requirement
 to `uv` on every start, and `uv` skips a version that is already installed.
-Pre-releases (`0.7.4rc1`) published to PyPI work with an exact pin as well.
+Pre-releases (`0.8.2rc1`) published to PyPI work with an exact pin as well.
 Commit only exact pins of published versions.
 
 ## Credits
