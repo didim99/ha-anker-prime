@@ -162,3 +162,115 @@ delete_custom_profile:
           min: 1
           max: 4
           mode: box
+
+set_custom_limits:
+  target:
+    entity:
+      integration: anker_prime
+      domain: select
+  fields:
+    number:
+      selector:
+        number:
+          min: 1
+          max: 4
+          mode: box
+    c1:
+      selector:
+        number:
+          min: 0
+          max: 140
+          unit_of_measurement: W
+          mode: box
+    c2:
+      selector:
+        number:
+          min: 0
+          max: 140
+          unit_of_measurement: W
+          mode: box
+    c3:
+      selector:
+        number:
+          min: 0
+          max: 140
+          unit_of_measurement: W
+          mode: box
+    c4:
+      selector:
+        number:
+          min: 0
+          max: 140
+          unit_of_measurement: W
+          mode: box
+    usb_a:
+      selector:
+        number:
+          min: 0
+          max: 24
+          unit_of_measurement: W
+          mode: box
+    auto_exit:
+      selector:
+        boolean:
+
+upload_clock_picture:
+  target:
+    entity:
+      integration: anker_prime
+      domain: select
+  fields:
+    file:
+      required: true
+      example: /media/clock.jpg
+      selector:
+        text:
+
+delete_clock_picture:
+  target:
+    entity:
+      integration: anker_prime
+      domain: select
+  fields:
+    picture_id:
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 4294967295
+          mode: box
+
+upload_screen_picture:
+  target:
+    entity:
+      integration: anker_prime
+      domain: sensor
+  fields:
+    file:
+      required: true
+      example: /media/screen.jpg
+      selector:
+        text:
+    acknowledge_irreversible:
+      required: true
+      selector:
+        boolean:
+
+select_screen_picture:
+  target:
+    entity:
+      integration: anker_prime
+      domain: sensor
+  fields:
+    picture_id:
+      required: true
+      selector:
+        number:
+          min: 0
+          max: 4294967295
+          mode: box
+    crc32:
+      required: true
+      example: 1a2b3c4d
+      selector:
+        text:

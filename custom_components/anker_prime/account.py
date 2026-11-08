@@ -11,10 +11,12 @@ from homeassistant.helpers.storage import STORAGE_DIR
 
 from ankerprime.api.cloud import (
     AccountOptions, AuthenticationListener, CloudAccount)
-from ankerprime.cloud.auth import AccountCredentials, Authentication
+from ankerprime.cloud.auth import (
+    AccountClient, AccountCredentials, Authentication)
 from ankerprime.cloud.http import AiohttpClient
+from ankerprime.model import AuthenticationError
 
-from .const import CONF_AUTHENTICATION, DOMAIN
+from .const import CONF_AUTHENTICATION, DOMAIN, is_phone_account
 from .storage import HomeAssistantStore
 
 
@@ -26,22 +28,43 @@ async def async_login(hass: HomeAssistant,
     return await CloudAccount.login(_http(hass), credentials, options=options)
 
 
+async def async_request_phone_code(hass: HomeAssistant, phone: str) -> None:
+    """Have Anker send a sign-in code by SMS (mainland China)."""
+
+    await AccountClient(_http(hass)).request_phone_code(phone)
+
+
+async def async_login_phone(hass: HomeAssistant, phone: str,
+                            code: str) -> CloudAccount:
+    """Sign in a mainland China account with the SMS code."""
+
+    options = AccountOptions(tls_directory=tls_directory(hass))
+    return await CloudAccount.login_phone(_http(hass), phone, code,
+                                          options=options)
+
+
 async def async_create_account(hass: HomeAssistant, data: Mapping[str, Any],
                                on_authentication: AuthenticationListener
                                ) -> CloudAccount:
     """The account of a config entry, from its stored token when usable.
 
     Credentials are kept, so an expired token is replaced by signing in
-    again; every new token goes to ``on_authentication``.
+    again; every new token goes to ``on_authentication``. A mainland China
+    (SMS) entry has no credentials: without a usable token it raises
+    ``AuthenticationError`` and needs a new code.
     """
 
-    credentials = credentials_from(data)
     stored = data.get(CONF_AUTHENTICATION)
     authentication = (Authentication.from_document(stored)
                       if isinstance(stored, dict) else None)
     options = AccountOptions(tls_directory=tls_directory(hass),
                              energy_store=HomeAssistantStore(hass),
                              on_authentication=on_authentication)
+    if is_phone_account(data):
+        if authentication is None:
+            raise AuthenticationError('a new SMS code is needed')
+        return CloudAccount(_http(hass), authentication, options=options)
+    credentials = credentials_from(data)
     if authentication is None:
         account = await CloudAccount.login(_http(hass), credentials,
                                            options=options)

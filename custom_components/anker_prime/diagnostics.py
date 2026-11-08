@@ -11,13 +11,14 @@ from homeassistant.core import HomeAssistant
 from ankerprime.model.serialize import state_to_dict
 
 from .const import (
-    CONF_AUTHENTICATION, CONF_CLIENT_ID, CONF_OWNER_ID, CONF_SERIALS)
+    CONF_AUTHENTICATION, CONF_CLIENT_ID,
+    CONF_OWNER_ID, CONF_PHONE, CONF_SERIALS)
 from .coordinator import AnkerPrimeConfigEntry
 
 
-TO_REDACT = {CONF_EMAIL, CONF_PASSWORD, CONF_AUTHENTICATION, CONF_SERIALS,
-             CONF_ADDRESS, CONF_OWNER_ID, CONF_CLIENT_ID, 'serial',
-             'mac_address', 'usb_vendor_id', 'usb_product_id'}
+TO_REDACT = {CONF_EMAIL, CONF_PASSWORD, CONF_PHONE, CONF_AUTHENTICATION,
+             CONF_SERIALS, CONF_ADDRESS, CONF_OWNER_ID, CONF_CLIENT_ID,
+             'serial', 'mac_address', 'usb_vendor_id', 'usb_product_id'}
 
 
 async def async_get_config_entry_diagnostics(

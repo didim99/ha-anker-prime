@@ -13,13 +13,14 @@ This is an unofficial project, not affiliated with or endorsed by Anker.
 
 ## Supported chargers
 
-| Model | Name                     | Connection                              | Verified on hardware              |
-|-------|--------------------------|-----------------------------------------|-----------------------------------|
-| A2345 | Anker Prime Charger 250W | Anker cloud (account + MQTT over Wi-Fi) | everything except the UFCS switch |
-| A2687 | Anker Prime 160W         | Bluetooth LE (local adapter or proxy)   | not tested on real hardware       |
+| Model | Name                     | Connection                              | Verified on hardware                                             |
+|-------|--------------------------|-----------------------------------------|------------------------------------------------------------------|
+| A2345 | Anker Prime Charger 250W | Anker cloud (account + MQTT over Wi-Fi) | everything except the UFCS switch and showing own clock pictures |
+| A2687 | Anker Prime 160W         | Bluetooth LE (local adapter or proxy)   | not tested on real hardware                                      |
 
-The 250W must be bound to an Anker account in the Anker app; accounts of
-mainland China (SMS login) are not supported.
+The 250W must be bound to an Anker account in the Anker app. Accounts of
+mainland China sign in with the phone number and an SMS code (not tested
+with a real account).
 
 ## Installation
 
@@ -45,25 +46,29 @@ appear from Home Assistant 2026.3 on.
 
 ## Features
 
-- **Setup in the UI**, two ways (Add integration → Anker Prime):
+- **Setup in the UI**, three ways (Add integration → Anker Prime):
   - **Anker account** (250W): sign in, choose the chargers; one device per
     charger, all sharing one connection. A second Anker account, with the
     chargers shared to it, keeps the Anker app's own login untouched.
+  - **Anker account in mainland China** (250W): the phone number and a code
+    sent by SMS. Without a password the login cannot be renewed: when it
+    ends, Home Assistant asks for a new code.
   - **Bluetooth** (160W): discovered automatically, or picked from the
     chargers nearby; one entry per charger. See [160W over
     Bluetooth](#160w-over-bluetooth).
 - **Sensors:** power, voltage, current and status (idle, active, charging;
   cable, protocol and device as attributes) per port; total power; energy per
   port and in total for the energy dashboard; when each output's countdown
-  ends.
+  ends; the picture the 160W's screen shows.
 - **Switches:** power per output; preferred outputs of the port-priority mode;
   clock screensaver, holiday themes, max compatibility, device
-  identification, UFCS; the account's custom mode setting (Labs, 250W);
-  display auto-rotation (160W).
+  identification, UFCS; the account's custom mode setting (Labs, 250W); the
+  time over own clock pictures (250W); display auto-rotation (160W).
 - **Selects and numbers:** charging mode, screen timeout, knob direction, hour
   format, clock theme, display brightness; on the 250W a custom profile
   select that applies a profile stored in the Anker account (leave custom
-  mode with the charging mode select); on the 160W also fixed
+  mode with the charging mode select) and a clock picture select (the Anker
+  catalogue and the account's own pictures); on the 160W also fixed
   allocation, screen orientation and display language (the charger does not
   report the last two, so they read unknown until set from Home Assistant).
 - **Buttons:** refresh the settings; reset the energy counters (disabled by
@@ -73,10 +78,16 @@ appear from Home Assistant 2026.3 on.
 - **Actions** on the output switches: `anker_prime.set_schedule`,
   `anker_prime.disable_schedule`, `anker_prime.start_countdown`,
   `anker_prime.cancel_countdown`; on the clock screensaver switch:
-  `anker_prime.set_clock_schedule`; on the custom profile select:
+  `anker_prime.set_clock_schedule`; on the charging mode select:
+  `anker_prime.set_custom_limits` (custom mode without storing a profile;
+  the only way on the 160W); on the custom profile select:
   `anker_prime.save_custom_profile` (a new profile starts from the Anker
-  app's defaults) and `anker_prime.delete_custom_profile`. Output switches
-  show their schedules and countdown as attributes.
+  app's defaults) and `anker_prime.delete_custom_profile`; on the clock
+  picture select: `anker_prime.upload_clock_picture` and
+  `anker_prime.delete_clock_picture`; on the 160W's screen picture sensor:
+  `anker_prime.upload_screen_picture` and
+  `anker_prime.select_screen_picture` (see [Pictures](#pictures)). Output
+  switches show their schedules and countdown as attributes.
 - **Options:** the minimum interval between entity updates (default 5 s; 0
   updates on every reading, about once a second). Energy is counted from
   every reading either way and kept across restarts.
@@ -88,6 +99,25 @@ appear from Home Assistant 2026.3 on.
 Features the library has not confirmed on real hardware yet are disabled by
 default; enable them on the entity page to try them. Entities appear only for
 what the charger model offers.
+
+## Pictures
+
+Picture actions read an image file from a folder Home Assistant allows: the
+media folders, `www`, or one listed in `allowlist_external_dirs`. Relative
+paths start at the configuration folder. Any image works; it is cropped to
+fill the charger's format.
+
+- **250W clock pictures:** the clock picture select lists the Anker
+  catalogue and the account's own pictures (`Own <id>`). Choosing one waits
+  until the charger has downloaded it and switches the clock on.
+  `upload_clock_picture` adds an own picture to the account (480×200; at
+  most eight); choose it in the select to show it.
+- **160W screen picture** (disabled by default):
+  `upload_screen_picture` writes a 240×240 picture to the charger and shows
+  it. **This cannot be undone**: no command removes a picture from the
+  charger, so the action needs `acknowledge_irreversible: true`. It returns
+  the picture's ID and CRC-32 (also kept as attributes of the sensor), which
+  `select_screen_picture` takes to show it again later.
 
 ## 160W over Bluetooth
 

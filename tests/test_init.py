@@ -25,7 +25,7 @@ from tests.fakes import (
 
 ROOT = Path(__file__).parent.parent
 REQUIREMENT_PATTERN = re.compile(
-    r'anker-prime-driver\[ble\]==(?P<version>[0-9A-Za-z.+-]+)')
+    r'anker-prime-driver\[[a-z,]+\]==(?P<version>[0-9A-Za-z.+-]+)')
 
 
 def test_versions_in_use() -> None:

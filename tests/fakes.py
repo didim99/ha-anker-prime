@@ -20,10 +20,11 @@ from homeassistant.components.bluetooth import BluetoothServiceInfoBleak
 
 from ankerprime.model import (
     A2345, A2687, AuthenticationError, ChargerSettings, ChargerState,
-    ChargingMode, ChargingProfile, ClockSchedule, ClockSettings, ClockTheme,
-    Countdown, DeviceInfo, DisplayLanguage, DisplaySettings, FixedAllocation,
-    HourFormat, KnobDirection, OutputId, OutputState, PortId, PortReading,
-    Product, Schedule, ScheduleSlot, ScreenOrientation, ScreenTimeout, Weekday)
+    ChargingMode, ChargingProfile, ClockPicture, ClockSchedule, ClockSettings,
+    ClockTheme, Countdown, DeviceInfo, DisplayLanguage, DisplaySettings,
+    FixedAllocation, HourFormat, InvalidParameterError, KnobDirection,
+    OutputId, OutputState, PortId, PortReading, Product, Schedule, ScheduleSlot,
+    ScreenOrientation, ScreenPictureUpload, ScreenTimeout, Weekday)
 
 
 SERIAL = 'AZVD4F12340868'
@@ -33,6 +34,13 @@ EMAIL = 'second@example.com'
 PASSWORD = 'secret'
 COUNTRY = 'US'
 NOW = datetime(2026, 11, 4, 12, 0, tzinfo=UTC)
+
+PHONE = '13800138000'
+SMS_CODE = '123456'
+FOREST = ClockPicture(31, 'https://cdn/forest.jpg', 0x1A2B3C4D,
+                      title='Forest')
+SEA = ClockPicture(32, 'https://cdn/sea.jpg', 0xBEEF, title='Sea')
+OWN_PICTURE = ClockPicture(7, 'https://own/7.jpg', 0x77, own=True)
 
 BLE_ADDRESS = 'AA:BB:CC:DD:EE:01'
 BLE_SERIAL = 'ASHDK7U1F51501771'
@@ -62,7 +70,8 @@ def make_state(*, available: bool = True, serial: str = SERIAL,
                energy: dict[PortId, float] | None = None,
                countdown_c2: bool = False, firmware: str = '2.1.1.6',
                ufcs: bool | None = None,
-               custom_profile: int | None = None) -> ChargerState:
+               custom_profile: int | None = None,
+               clock: ClockSettings | None = None) -> ChargerState:
     """A 250W; ``custom_profile`` puts it in custom mode with that profile."""
     ports = {
         PortId.C1: PortReading(PortId.C1, status_code=1, voltage=20.0,
@@ -91,10 +100,9 @@ def make_state(*, available: bool = True, serial: str = SERIAL,
                                 screen_timeout=ScreenTimeout.FIVE_MINUTES,
                                 knob_direction=KnobDirection.FORWARD,
                                 hour_format=HourFormat.TWENTY_FOUR_HOUR),
-        clock=ClockSettings(False, theme=ClockTheme.STYLE_2,
-                            holiday_theme=False,
-                            schedule=ClockSchedule(8, 0, 23, 0,
-                                                   Weekday.EVERY_DAY)))
+        clock=clock or ClockSettings(
+            False, theme=ClockTheme.STYLE_2, holiday_theme=False,
+            schedule=ClockSchedule(8, 0, 23, 0, Weekday.EVERY_DAY)))
     if energy is None:
         energy = dict.fromkeys((spec.port for spec in A2345.ports), 0.0)
         energy[PortId.C1] = 12.5
@@ -107,7 +115,8 @@ def make_state(*, available: bool = True, serial: str = SERIAL,
 
 
 def make_ble_state(*, available: bool = True,
-                   serial: str | None = BLE_SERIAL) -> ChargerState:
+                   serial: str | None = BLE_SERIAL,
+                   screen_picture: int | None = None) -> ChargerState:
     ports = {port: PortReading(port, status_code=1, voltage=20.0,
                                current=1.0 if port == PortId.C1 else 0.0,
                                power=20.0 if port == PortId.C1 else 0.0)
@@ -119,7 +128,8 @@ def make_ble_state(*, available: bool = True,
         display=DisplaySettings(brightness=80,
                                 screen_timeout=ScreenTimeout.ONE_MINUTE,
                                 orientation=ScreenOrientation.UP,
-                                auto_rotation=False))
+                                auto_rotation=False,
+                                screen_picture=screen_picture))
     return ChargerState(A2687,
                         info=DeviceInfo(serial=serial,
                                         firmware_version='v0.0.5.2'),
@@ -146,6 +156,10 @@ class FakeCharger(BaseCharger):
     fail_with: Exception | None
     connect_error: Exception | None
     connected: bool
+    catalogue: list[ClockPicture]
+    own_pictures: list[ClockPicture]
+    picture_reads: list[str]
+    picture_error: Exception | None
 
     def __init__(self, state: ChargerState | None = None,
                  product: Product = A2345):
@@ -154,6 +168,10 @@ class FakeCharger(BaseCharger):
         self.fail_with = None
         self.connect_error = None
         self.connected = False
+        self.catalogue = [FOREST, SEA]
+        self.own_pictures = [OWN_PICTURE]
+        self.picture_reads = []
+        self.picture_error = None
         if state is not None:
             self._state = state
 
@@ -261,6 +279,45 @@ class FakeCharger(BaseCharger):
     async def _reload_custom_profiles(self) -> None:
         self._record('reload_custom_profiles')
 
+    async def _clock_pictures(self, language: str
+                              ) -> tuple[ClockPicture, ...]:
+        # Reads, not commands: kept out of ``calls``.
+        self.picture_reads.append(language)
+        if self.picture_error is not None:
+            raise self.picture_error
+        return tuple(self.catalogue)
+
+    async def _own_clock_pictures(self) -> tuple[ClockPicture, ...]:
+        return tuple(self.own_pictures)
+
+    async def _apply_clock_picture(self, picture: ClockPicture) -> None:
+        self._record('apply_clock_picture', picture)
+
+    async def _upload_clock_picture(self, jpeg: bytes) -> None:
+        self._record('upload_clock_picture', jpeg)
+        self.own_pictures.append(ClockPicture(
+            40 + len(self.own_pictures), 'https://own/new.jpg', 1, own=True))
+
+    async def _delete_clock_picture(self, picture_id: int) -> None:
+        self._record('delete_clock_picture', picture_id)
+        self.own_pictures[:] = [picture for picture in self.own_pictures
+                                if picture.picture_id != picture_id]
+
+    async def _set_picture_time(self, enabled: bool) -> None:
+        self._record('set_picture_time', enabled)
+
+    async def _upload_screen_picture(self, jpeg: bytes,
+                                     acknowledge_irreversible: bool
+                                     ) -> ScreenPictureUpload:
+        self._record('upload_screen_picture', jpeg, acknowledge_irreversible)
+        return ScreenPictureUpload(0x1_2345, 0x1A2B3C4D,
+                                   byte_count=len(jpeg), chunk_count=1,
+                                   previous=0x0001, witnessed=True)
+
+    async def _select_screen_picture(self, picture_id: int, crc32: int
+                                     ) -> None:
+        self._record('select_screen_picture', picture_id, crc32)
+
     def _record(self, name: str, *args: Any) -> None:
         if self.fail_with is not None:
             raise self.fail_with
@@ -277,6 +334,8 @@ class FakeCloud:
     user_id: str
     logins: list[AccountCredentials]
     accounts: list[FakeCloudAccount]
+    sms_sent: list[str]
+    sms_error: Exception | None
 
     def __init__(self) -> None:
         self.devices = [make_device()]
@@ -286,6 +345,8 @@ class FakeCloud:
         self.user_id = USER_ID
         self.logins = []
         self.accounts = []
+        self.sms_sent = []
+        self.sms_error = None
 
 
 class FakeCloudAccount:
@@ -341,6 +402,34 @@ class FakeCloudAccount:
         authentication = make_authentication(cls.cloud.user_id, 'token-new')
         return cls(http, authentication, credentials=credentials,
                    options=options)
+
+    @classmethod
+    async def login_phone(cls, http: HttpClient, phone: str, code: str, *,
+                          options: AccountOptions | None = None
+                          ) -> FakeCloudAccount:
+        if cls.cloud.login_error is not None:
+            raise cls.cloud.login_error
+        if code != SMS_CODE:
+            raise AuthenticationError('phone login refused (26035)')
+        authentication = make_authentication(cls.cloud.user_id, 'token-sms')
+        return cls(http, authentication, options=options)
+
+
+class FakeAccountClient:
+    """Stands in for ``ankerprime.cloud.auth.AccountClient`` (SMS codes)."""
+
+    cloud: FakeCloud
+
+    def __init__(self, http: HttpClient, clock: Any = None):
+        pass
+
+    async def request_phone_code(self, phone: str) -> None:
+        if len(phone) != 11 or not phone.startswith('1'):
+            raise InvalidParameterError('a mainland China mobile number has '
+                                        '11 digits and starts with 1')
+        if self.cloud.sms_error is not None:
+            raise self.cloud.sms_error
+        self.cloud.sms_sent.append(phone)
 
 
 class FakeBluetooth:

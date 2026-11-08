@@ -10,10 +10,14 @@ from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers import entity_registry as er
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from ankerprime.model import ChargingProfile, CustomPortLimit, OutputId
+from ankerprime.model import (
+    A2345, A2687, ChargingProfile, CustomPortLimit, OutputId)
 
 from custom_components.anker_prime.const import DOMAIN
-from tests.fakes import FakeCharger, make_profile, make_state
+from tests.conftest import phone_entry_data
+from tests.fakes import (
+    PHONE, SERIAL, USER_ID, FakeBluetooth,
+    FakeCharger, FakeCloud, make_profile, make_state)
 
 
 PROFILE = 'select.desk_charger_custom_profile'
@@ -135,3 +139,63 @@ async def test_labs_switch(hass: HomeAssistant, loaded: MockConfigEntry,
     await hass.services.async_call('switch', SERVICE_TURN_OFF,
                                    {ATTR_ENTITY_ID: LABS}, blocking=True)
     assert charger.calls == [('set_custom_mode_enabled', (False,))]
+
+
+async def test_set_custom_limits_on_the_250w(hass: HomeAssistant,
+                                             loaded: MockConfigEntry,
+                                             charger: FakeCharger) -> None:
+    await call(hass, 'set_custom_limits', 'select.desk_charger_charging_mode',
+               c1=100, usb_a=0)
+    name, (profile,) = charger.calls[-1]
+    assert name == 'apply_custom_profile'
+    defaults = make_profile(1, 'Custom')
+    assert profile.number == 1
+    assert profile.watts(OutputId.C1) == 100
+    assert profile.watts(OutputId.USB_A) == 0
+    assert profile.watts(OutputId.C2) == defaults.watts(OutputId.C2)
+
+
+async def test_custom_limits_need_the_charging_mode_select(
+        hass: HomeAssistant, loaded: MockConfigEntry,
+        charger: FakeCharger) -> None:
+    with pytest.raises(ServiceValidationError, match='does not support'):
+        await call(hass, 'set_custom_limits', PROFILE, c1=60)
+    assert charger.calls == []
+
+
+async def test_set_custom_limits_on_the_160w(
+        hass: HomeAssistant, bluetooth: FakeBluetooth,
+        ble_entry: MockConfigEntry) -> None:
+    mode = 'select.anker_prime_160w_1771_charging_mode'
+    assert await hass.config_entries.async_setup(ble_entry.entry_id)
+    await hass.async_block_till_done()
+    registry = er.async_get(hass)
+    registry.async_update_entity(mode, disabled_by=None)
+    await hass.config_entries.async_reload(ble_entry.entry_id)
+    await hass.async_block_till_done()
+    charger = bluetooth.charger
+    with pytest.raises(ServiceValidationError, match='no c4 limit'):
+        await call(hass, 'set_custom_limits', mode, c1=45, c4=30)
+    await call(hass, 'set_custom_limits', mode, c1=45, c3=0)
+    name, (profile,) = charger.calls[-1]
+    assert name == 'apply_custom_profile'
+    assert profile.watts(OutputId.C1) == 45
+    assert profile.watts(OutputId.C3) == 0
+    rules = A2687.custom_mode
+    assert rules is not None
+    assert profile.watts(OutputId.C2) == rules.template(1, '').watts(
+        OutputId.C2)
+
+
+async def test_mainland_profiles_use_mainland_limits(
+        hass: HomeAssistant, cloud: FakeCloud) -> None:
+    entry = MockConfigEntry(domain=DOMAIN, title=PHONE, unique_id=USER_ID,
+                            data=phone_entry_data())
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    charger = cloud.chargers[SERIAL]
+    await call(hass, 'save_custom_profile', PROFILE, number=2)
+    rules = A2345.custom_mode
+    assert rules is not None
+    assert saved(charger) == rules.template(2, 'Profile 2', mainland=True)

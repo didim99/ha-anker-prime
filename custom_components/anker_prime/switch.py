@@ -56,6 +56,13 @@ SETTING_SWITCHES = (
                                    if settings.clock else None),
         set_fn=lambda charger, on: charger.set_holiday_theme(on)),
     SettingSwitchDescription(
+        key='picture_time', translation_key='picture_time',
+        capability=Capability.OWN_CLOCK_PICTURES,
+        entity_category=EntityCategory.CONFIG,
+        value_fn=lambda settings: (settings.clock.picture_time
+                                   if settings.clock else None),
+        set_fn=lambda charger, on: charger.set_picture_time(on)),
+    SettingSwitchDescription(
         key='max_compatibility', translation_key='max_compatibility',
         capability=Capability.MAX_COMPATIBILITY,
         entity_category=EntityCategory.CONFIG,

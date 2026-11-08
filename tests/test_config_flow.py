@@ -25,7 +25,7 @@ async def start(hass: HomeAssistant) -> str:
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={'source': SOURCE_USER})
     assert result['type'] is FlowResultType.MENU
-    assert result['menu_options'] == ['cloud', 'bluetooth_pick']
+    assert result['menu_options'] == ['cloud', 'cloud_phone', 'bluetooth_pick']
     result = await hass.config_entries.flow.async_configure(
         result['flow_id'], {'next_step_id': 'cloud'})
     assert result['type'] is FlowResultType.FORM

@@ -13,12 +13,12 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.anker_prime.const import (
     CONF_AUTHENTICATION, CONF_CLIENT_ID, CONF_CONNECTION, CONF_OWNER_ID,
-    CONF_SERIAL, CONF_SERIALS, CONNECTION_BLUETOOTH, DOMAIN,
-    OPTION_UPDATE_INTERVAL)
+    CONF_PHONE, CONF_SERIAL, CONF_SERIALS, CONNECTION_BLUETOOTH,
+    DOMAIN, MAINLAND_COUNTRY, OPTION_UPDATE_INTERVAL)
 from tests.fakes import (
-    BLE_ADDRESS, BLE_SERIAL, COUNTRY, EMAIL, PASSWORD, SERIAL, USER_ID,
-    FakeBluetooth, FakeCharger, FakeCloud, FakeCloudAccount,
-    make_authentication)
+    BLE_ADDRESS, BLE_SERIAL, COUNTRY, EMAIL, PASSWORD,
+    PHONE, SERIAL, USER_ID, FakeAccountClient, FakeBluetooth,
+    FakeCharger, FakeCloud, FakeCloudAccount, make_authentication)
 
 
 @pytest.fixture(autouse=True)
@@ -68,8 +68,12 @@ def cloud() -> Iterator[FakeCloud]:
     fake = FakeCloud()
     account_class = type('PatchedAccount', (FakeCloudAccount,),
                          {'cloud': fake})
-    with patch('custom_components.anker_prime.account.CloudAccount',
-               account_class):
+    client_class = type('PatchedClient', (FakeAccountClient,),
+                        {'cloud': fake})
+    with (patch('custom_components.anker_prime.account.CloudAccount',
+                account_class),
+          patch('custom_components.anker_prime.account.AccountClient',
+                client_class)):
         yield fake
 
 
@@ -87,6 +91,16 @@ def find_device(hass: HomeAssistant, entry: MockConfigEntry,
         if (DOMAIN, serial) in device.identifiers]
     assert len(devices) == 1
     return devices[0]
+
+
+def phone_entry_data(**overrides: Any) -> dict[str, Any]:
+    """A mainland China account signed in by SMS: no password."""
+
+    data = {CONF_PHONE: PHONE, CONF_COUNTRY: MAINLAND_COUNTRY,
+            CONF_AUTHENTICATION: make_authentication().to_document(),
+            CONF_SERIALS: [SERIAL]}
+    data.update(overrides)
+    return data
 
 
 def entry_data(**overrides: Any) -> dict[str, Any]:

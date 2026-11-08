@@ -16,6 +16,10 @@ CONNECTION_CLOUD = 'cloud'
 CONNECTION_BLUETOOTH = 'bluetooth'
 
 CONF_AUTHENTICATION = 'authentication'
+# Mainland China accounts sign in by SMS: the phone number replaces email and
+# password, and an ended token needs a new code (reauth).
+CONF_PHONE = 'phone'
+MAINLAND_COUNTRY = 'CN'
 CONF_SERIALS = 'serials'
 CONF_SERIAL = 'serial'
 CONF_OWNER_ID = 'owner_id'
@@ -53,3 +57,9 @@ def is_bluetooth(data: Mapping[str, Any]) -> bool:
     """Whether entry data describes a Bluetooth (160W) entry."""
 
     return data.get(CONF_CONNECTION) == CONNECTION_BLUETOOTH
+
+
+def is_phone_account(data: Mapping[str, Any]) -> bool:
+    """Whether entry data describes a mainland China (SMS) cloud entry."""
+
+    return CONF_PHONE in data

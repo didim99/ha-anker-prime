@@ -1,4 +1,8 @@
-"""Readings per port and for the whole charger, energy and countdown ends."""
+"""Readings per port and for the whole charger, energy and countdown ends.
+
+The 160W's screen picture sensor carries the screen picture actions
+(registered in ``services.py``).
+"""
 
 from __future__ import annotations
 
@@ -10,17 +14,22 @@ from typing import Any
 from homeassistant.components.sensor import (
     SensorDeviceClass, SensorEntity, SensorEntityDescription, SensorStateClass)
 from homeassistant.const import (
-    UnitOfElectricCurrent, UnitOfElectricPotential, UnitOfEnergy, UnitOfPower)
+    EntityCategory, UnitOfElectricCurrent,
+    UnitOfElectricPotential, UnitOfEnergy, UnitOfPower)
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.helpers.typing import StateType
 
-from ankerprime.model import Capability, OutputId, PortId, PortReading
+from ankerprime.model import (
+    Capability, OutputId, PictureTransferError,
+    PortId, PortReading, ScreenPictureUpload)
+from ankerprime.pictures import SCREEN_PICTURE
 from ankerprime.utils import enum_value
 
 from .const import OUTPUT_LABELS, PORT_LABELS
 from .coordinator import AnkerPrimeConfigEntry, AnkerPrimeCoordinator
-from .entity import AnkerPrimeEntity, creatable
+from .entity import AnkerPrimeEntity, creatable, read_picture_file
 
 
 PORT_STATUSES = ['idle', 'active', 'charging']
@@ -91,6 +100,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: AnkerPrimeConfigEntry,
         if creatable(coordinator.data, Capability.OUTPUT_COUNTDOWN):
             entities.extend(CountdownEndSensor(coordinator, output.output)
                             for output in product.outputs)
+        if creatable(coordinator.data, Capability.SCREEN_PICTURE):
+            entities.append(ScreenPictureSensor(coordinator))
     add_entities(entities)
 
 
@@ -194,6 +205,61 @@ class CountdownEndSensor(AnkerPrimeEntity, SensorEntity):
         if control is None or control.countdown is None:
             return None
         return control.countdown.ends_at
+
+
+class ScreenPictureSensor(AnkerPrimeEntity, SensorEntity):
+    """The picture the 160W's screen shows (low 16 bits of its id).
+
+    Attributes name the last picture uploaded from Home Assistant; its id
+    and CRC-32 select it again later.
+    """
+
+    _attr_translation_key = 'screen_picture'
+    _attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    _last_upload: ScreenPictureUpload | None
+
+    def __init__(self, coordinator: AnkerPrimeCoordinator):
+        super().__init__(coordinator, 'screen_picture',
+                         capability=Capability.SCREEN_PICTURE)
+        self._last_upload = None
+
+    @property
+    def native_value(self) -> int | None:
+        return self.charger_state.settings.display.screen_picture
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any] | None:
+        upload = self._last_upload
+        if upload is None:
+            return None
+        return {'last_upload_id': upload.picture_id,
+                'last_upload_crc32': f'{upload.crc32:08x}'}
+
+    async def async_upload(self, file: str) -> dict[str, Any]:
+        """Write an image file to the screen; nothing can erase it later."""
+
+        jpeg = await read_picture_file(self.hass, file, SCREEN_PICTURE)
+        try:
+            result = await self.run_command(self.charger.upload_screen_picture(
+                jpeg, acknowledge_irreversible=True))
+        except HomeAssistantError as error:
+            cause = error.__cause__
+            if (isinstance(cause, PictureTransferError)
+                    and cause.pixels_written):
+                raise HomeAssistantError(
+                    f'{error}. Part or all of the picture is on the charger '
+                    'now.') from cause
+            raise
+        self._last_upload = result
+        self.async_write_ha_state()
+        return {'picture_id': result.picture_id,
+                'crc32': f'{result.crc32:08x}',
+                'witnessed': result.witnessed}
+
+    async def async_select(self, picture_id: int, crc32: int) -> None:
+        await self.run_command(
+            self.charger.select_screen_picture(picture_id, crc32))
 
 
 def _hex(value: int | None) -> str | None:

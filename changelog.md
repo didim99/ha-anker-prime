@@ -9,17 +9,36 @@ version with every other change to the integration itself. Documentation,
 examples, test tooling and changes that only move the library pin keep the
 version.
 
-## [Unreleased]
+## [0.3.0] - 2026-11-08
+
+The remaining features of the library's 0.8.0 release.
 
 ### Added
 - 250W custom charging: a custom profile select applies a profile stored in
   the Anker account; actions `save_custom_profile` and
   `delete_custom_profile` on it; a switch for the account's custom mode
   setting (Labs).
+- Custom limits without a stored profile: action `set_custom_limits` on the
+  charging mode select, for both models (the 160W's only custom mode; C1–C3,
+  experimental).
+- 250W clock pictures: a clock picture select with the Anker catalogue and
+  the account's own pictures; actions `upload_clock_picture` and
+  `delete_clock_picture` on it; a switch for the time over own pictures
+  (experimental, disabled by default).
+- 160W screen picture (experimental, disabled by default): a sensor with the
+  picture shown; actions `upload_screen_picture` (irreversible, needs
+  `acknowledge_irreversible: true`, returns the picture's ID and CRC-32) and
+  `select_screen_picture`.
+- Mainland China accounts: setup with the phone number and an SMS code;
+  re-authentication asks for a new code, as such a login cannot be renewed
+  otherwise. Custom profiles use the mainland limits.
+- Picture actions read image files from folders Home Assistant allows.
 
 ### Changed
-- Requires `anker-prime-driver[ble]==0.8.0`: the account is built with the
-  library's `AccountOptions`; country choices follow its `PHONE_REGIONS`.
+- Requires `anker-prime-driver[ble,pictures]==0.8.0`: the account is built
+  with the library's `AccountOptions`; country choices follow its
+  `PHONE_REGIONS`; Pillow (shipped with Home Assistant) prepares pictures.
+- Diagnostics also redact the phone number.
 
 ## [0.2.3] - 2026-11-07
 

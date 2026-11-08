@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from collections.abc import Awaitable
+from pathlib import Path
+from typing import TypeVar
 
+from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers.device_registry import (
     CONNECTION_BLUETOOTH, DeviceInfo)
@@ -13,9 +16,13 @@ from ankerprime.interfaces.charger import Charger
 from ankerprime.model import (
     AnkerPrimeError, Capability, ChargerState, InvalidParameterError,
     UnsupportedCapabilityError, Verification)
+from ankerprime.pictures import PictureFormat, prepare_picture
 
 from .const import DOMAIN, MANUFACTURER
 from .coordinator import AnkerPrimeCoordinator
+
+
+ResultT = TypeVar('ResultT')
 
 
 class AnkerPrimeEntity(CoordinatorEntity[AnkerPrimeCoordinator]):
@@ -71,11 +78,11 @@ class AnkerPrimeEntity(CoordinatorEntity[AnkerPrimeCoordinator]):
     def charger_state(self) -> ChargerState:
         return self.coordinator.data
 
-    async def run_command(self, command: Awaitable[None]) -> None:
+    async def run_command(self, command: Awaitable[ResultT]) -> ResultT:
         """Await a charger command, mapping library errors for the UI."""
 
         try:
-            await command
+            return await command
         except (UnsupportedCapabilityError, InvalidParameterError) as error:
             raise ServiceValidationError(str(error)) from error
         except AnkerPrimeError as error:
@@ -88,3 +95,31 @@ def creatable(state: ChargerState, capability: Capability) -> bool:
 
     verification = state.product.capabilities.get(capability)
     return verification is not None and verification != Verification.PLANNED
+
+
+async def read_picture_file(hass: HomeAssistant, file: str,
+                            target: PictureFormat) -> bytes:
+    """An image file prepared as the charger's JPEG.
+
+    A relative path is taken from the configuration folder; the file must be
+    in a folder Home Assistant allows (``allowlist_external_dirs``; the
+    media folders and ``www`` by default).
+    """
+
+    path = Path(file)
+    if not path.is_absolute():
+        path = Path(hass.config.path(file))
+    if not hass.config.is_allowed_path(str(path)):
+        raise ServiceValidationError(
+            f'{path} is not in a folder Home Assistant allows '
+            '(allowlist_external_dirs)')
+    try:
+        data = await hass.async_add_executor_job(path.read_bytes)
+    except OSError as error:
+        raise ServiceValidationError(
+            f'cannot read {path}: {error.strerror}') from error
+    try:
+        return await hass.async_add_executor_job(prepare_picture, data,
+                                                 target)
+    except InvalidParameterError as error:
+        raise ServiceValidationError(str(error)) from error

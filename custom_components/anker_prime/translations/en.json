@@ -6,6 +6,7 @@
         "description": "Choose how the chargers are reached.",
         "menu_options": {
           "cloud": "Anker account (Prime Charger 250W, over the cloud)",
+          "cloud_phone": "Anker account in mainland China (Prime Charger 250W, SMS code)",
           "bluetooth_pick": "Bluetooth (Prime 160W, nearby)"
         }
       },
@@ -60,6 +61,34 @@
         "data": {
           "owner_id": "Owner account ID"
         }
+      },
+      "cloud_phone": {
+        "title": "Anker account (mainland China)",
+        "description": "Mainland China accounts sign in with the phone number and a code that Anker sends by SMS. Without a password the login cannot be renewed: when it ends, Home Assistant asks for a new code.",
+        "data": {
+          "phone": "Phone number"
+        },
+        "data_description": {
+          "phone": "The 11-digit mainland China mobile number of the Anker account."
+        }
+      },
+      "phone_code": {
+        "title": "SMS code",
+        "description": "Enter the code Anker sent to {phone}.",
+        "data": {
+          "code": "Code"
+        }
+      },
+      "reauth_phone": {
+        "title": "New SMS code",
+        "description": "The login of {phone} has ended. Submit to have Anker send a new code by SMS."
+      },
+      "reauth_code": {
+        "title": "SMS code",
+        "description": "Enter the code Anker sent to {phone}.",
+        "data": {
+          "code": "Code"
+        }
       }
     },
     "error": {
@@ -69,7 +98,10 @@
       "no_selection": "Choose at least one charger.",
       "unknown": "Unexpected error; see the log.",
       "not_in_range": "The charger is not in range of a connectable Bluetooth adapter or proxy.",
-      "owner_refused": "The charger refused this identity; enter the ID of the Anker account it is bound to."
+      "owner_refused": "The charger refused this identity; enter the ID of the Anker account it is bound to.",
+      "invalid_phone": "A mainland China mobile number has 11 digits and starts with 1.",
+      "phone_refused": "Anker did not send a code. The number may have no Anker account, or too many codes were requested; try again later.",
+      "invalid_code": "The code is wrong or has expired."
     },
     "abort": {
       "already_configured": "Already set up.",
@@ -205,6 +237,9 @@
       },
       "custom_profile": {
         "name": "Custom profile"
+      },
+      "clock_picture": {
+        "name": "Clock picture"
       }
     },
     "sensor": {
@@ -236,6 +271,9 @@
       },
       "countdown_end": {
         "name": "{output} countdown end"
+      },
+      "screen_picture": {
+        "name": "Screen picture"
       }
     },
     "switch": {
@@ -265,6 +303,9 @@
       },
       "auto_rotation": {
         "name": "Auto-rotation"
+      },
+      "picture_time": {
+        "name": "Time over own pictures"
       }
     }
   },
@@ -407,6 +448,88 @@
         "number": {
           "name": "Number",
           "description": "Profile number, 1–4."
+        }
+      }
+    },
+    "set_custom_limits": {
+      "name": "Set custom limits",
+      "description": "Switches to custom charging mode with these limits, without storing them. Outputs left out keep the Anker app's defaults; the 160W takes C1–C3 only. Leave custom mode by choosing another charging mode. Target the charging mode select.",
+      "fields": {
+        "number": {
+          "name": "Number",
+          "description": "Profile number the charger shows (250W: 1–4; default 1)."
+        },
+        "c1": {
+          "name": "C1",
+          "description": "Limit of C1 in watts; 0 switches it off."
+        },
+        "c2": {
+          "name": "C2",
+          "description": "Limit of C2 in watts; 0 switches it off."
+        },
+        "c3": {
+          "name": "C3",
+          "description": "Limit of C3 in watts; 0 switches it off."
+        },
+        "c4": {
+          "name": "C4",
+          "description": "Limit of C4 in watts; 0 switches it off (250W)."
+        },
+        "usb_a": {
+          "name": "USB-A",
+          "description": "Limit of the USB-A ports in watts: 0, 15 or 24 (250W)."
+        },
+        "auto_exit": {
+          "name": "Auto-exit",
+          "description": "Leave custom mode once every device is unplugged."
+        }
+      }
+    },
+    "upload_clock_picture": {
+      "name": "Upload clock picture",
+      "description": "Adds an own picture to the Anker account from an image file; it is cropped to fill the clock (480×200). Choose it in the clock picture select to show it. The account keeps at most eight. Target the clock picture select.",
+      "fields": {
+        "file": {
+          "name": "File",
+          "description": "Path of the image, in the media folder, www or another folder Home Assistant allows; relative paths start at the configuration folder."
+        }
+      }
+    },
+    "delete_clock_picture": {
+      "name": "Delete clock picture",
+      "description": "Removes an own picture from the Anker account. Target the clock picture select.",
+      "fields": {
+        "picture_id": {
+          "name": "Picture ID",
+          "description": "The number after \"Own\" in the clock picture select."
+        }
+      }
+    },
+    "upload_screen_picture": {
+      "name": "Upload screen picture",
+      "description": "Writes an image file to the 160W's screen and shows it; it is cropped to fill 240×240. This cannot be undone: no command removes a picture from the charger. Returns the picture's ID and CRC-32 for selecting it again. Target the screen picture sensor.",
+      "fields": {
+        "file": {
+          "name": "File",
+          "description": "Path of the image, in the media folder, www or another folder Home Assistant allows; relative paths start at the configuration folder."
+        },
+        "acknowledge_irreversible": {
+          "name": "I understand",
+          "description": "Confirm that the picture stays on the charger for good."
+        }
+      }
+    },
+    "select_screen_picture": {
+      "name": "Select screen picture",
+      "description": "Shows a picture written to the 160W before. Target the screen picture sensor.",
+      "fields": {
+        "picture_id": {
+          "name": "Picture ID",
+          "description": "ID returned by the upload."
+        },
+        "crc32": {
+          "name": "CRC-32",
+          "description": "CRC-32 returned by the upload, in hexadecimal."
         }
       }
     }
