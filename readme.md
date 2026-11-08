@@ -226,20 +226,35 @@ Settings stored in the Anker account are read back by reloading the entry, so
 a run takes several minutes. Mainland China (SMS) accounts and the 160W are
 not covered.
 
-| Option                       | Default                                        | Meaning                                                                          |
-|------------------------------|------------------------------------------------|----------------------------------------------------------------------------------|
-| `--hardware-serial=SERIAL`   | the CLI's default charger, else the only one   | Charger to test                                                                  |
-| `--hardware-image=IMAGE`     | `ghcr.io/home-assistant/home-assistant:stable` | Home Assistant image, pulled when missing (`docker pull` for a newer one)        |
-| `--hardware-library=PATH`    | the released version                           | Library working copy to install in the container instead                         |
-| `--hardware-settle=SECONDS`  | 5                                              | Wait for a read-back after a refresh                                             |
-| `--hardware-timeout=SECONDS` | 300                                            | Limit for Home Assistant to start and for the entry to load                      |
-| `--hardware-keep`            | off                                            | Keep the container and the entry afterwards; the address and sign-in are printed |
+| Option                       | Default                                      | Meaning                                                                          |
+|------------------------------|----------------------------------------------|----------------------------------------------------------------------------------|
+| `--hardware-serial=SERIAL`   | the CLI's default charger, else the only one | Charger to test                                                                  |
+| `--hardware-tag=TAG`         | `stable`                                     | Tag of `ghcr.io/home-assistant/home-assistant`, e.g. `2026.10.4` or `beta`       |
+| `--hardware-image=IMAGE`     | the tag's image                              | Another Home Assistant image, in place of the tag                                |
+| `--hardware-network=NETWORK` | Docker's bridge                              | Docker network of the container (see below)                                      |
+| `--hardware-library=PATH`    | the released version                         | Library working copy to install in the container instead                         |
+| `--hardware-settle=SECONDS`  | 5                                            | Wait for a read-back after a refresh                                             |
+| `--hardware-timeout=SECONDS` | 300                                          | Limit for Home Assistant to start and for the entry to load                      |
+| `--hardware-keep`            | off                                          | Keep the container and the entry afterwards; the address and sign-in are printed |
+
+Images are pulled when missing; `docker pull` fetches a newer `stable` or
+`beta`. `--hardware-network` takes what `docker create --network` takes:
+
+- a network name: on a bridge network the port is published on localhost
+  as by default; on a macvlan or ipvlan network (one bound to a host
+  interface) Home Assistant is reached at its own address, which the host
+  itself can reach only through a separate interface or a shim;
+- `host`: the host's network, Home Assistant on a free localhost port;
+- `container:NAME`: the network of a running container, for example a VPN
+  client, so the Anker cloud is reached through it. Home Assistant is
+  reached at that container's address on port 8123; a firewall in that
+  container must let it in.
 
 Write option values with `=`: pytest reads a separate value as a path to
 collect tests from. Home Assistant's log, with the integration and the
 library at debug level, is saved in pytest's temporary folder; its path is
-printed at the end. The container connects to the Anker cloud directly, with
-its own sign-in; the CLI's login stays valid.
+printed at the end. The container connects to the Anker cloud through its
+network, with its own sign-in; the CLI's login stays valid.
 
 ### Unreleased library versions
 

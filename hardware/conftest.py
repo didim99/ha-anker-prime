@@ -28,7 +28,8 @@ from hardware.container import DockerError, HomeAssistantContainer
 
 REPOSITORY = Path(__file__).parent.parent
 INTEGRATION = REPOSITORY / 'custom_components' / 'anker_prime'
-DEFAULT_IMAGE = 'ghcr.io/home-assistant/home-assistant:stable'
+IMAGE_REPOSITORY = 'ghcr.io/home-assistant/home-assistant'
+DEFAULT_TAG = 'stable'
 DEFAULT_SETTLE = 5.0
 DEFAULT_TIMEOUT = 300.0
 LIBRARY_FOLDER = 'anker-prime-driver'
@@ -46,6 +47,7 @@ homeassistant:
   unit_system: metric
   time_zone: UTC
 http:
+  server_port: {port}
 api:
 config:
 onboarding:
@@ -68,8 +70,15 @@ def pytest_addoption(parser: pytest.Parser) -> None:
                     default=DEFAULT_SETTLE,
                     help='seconds to wait for a read-back after a refresh '
                          f'(default {DEFAULT_SETTLE:g})')
-    group.addoption('--hardware-image', metavar='IMAGE', default=DEFAULT_IMAGE,
-                    help=f'Home Assistant image (default {DEFAULT_IMAGE})')
+    group.addoption('--hardware-tag', metavar='TAG',
+                    help=f'tag of {IMAGE_REPOSITORY} (default {DEFAULT_TAG}; '
+                         'e.g. 2026.10.4, beta)')
+    group.addoption('--hardware-image', metavar='IMAGE',
+                    help='another Home Assistant image, in place of the tag')
+    group.addoption('--hardware-network', metavar='NETWORK',
+                    help='Docker network of the container: a network name, '
+                         'host, or container:NAME to share the network of '
+                         "another container (default Docker's bridge)")
     group.addoption('--hardware-library', metavar='PATH', type=Path,
                     help='install this library working copy in Home '
                          'Assistant instead of the released version')
@@ -81,6 +90,10 @@ def pytest_addoption(parser: pytest.Parser) -> None:
                     help='keep the container and the entry afterwards, for a '
                          'look at them (remove with docker rm --force '
                          '--volumes NAME)')
+
+
+def pytest_configure(config: pytest.Config) -> None:
+    _image(config)  # option errors before anything starts
 
 
 def pytest_terminal_summary(terminalreporter: pytest.TerminalReporter,
@@ -141,9 +154,10 @@ async def home_assistant(request: pytest.FixtureRequest,
     options = request.config
     library: Path | None = options.getoption('hardware_library')
     timeout: float = options.getoption('hardware_timeout')
+    container = HomeAssistantContainer(
+        _image(options), options.getoption('hardware_network'))
     stage = tmp_path_factory.mktemp('config')
-    _stage_configuration(stage, library)
-    container = HomeAssistantContainer(options.getoption('hardware_image'))
+    _stage_configuration(stage, library, container.http_port)
     try:
         await container.start(stage)
         if library is not None:
@@ -213,10 +227,20 @@ async def _save_log(container: HomeAssistantContainer, log: Path,
         config.stash[LOG_KEY] = log
 
 
-def _stage_configuration(stage: Path, library: Path | None) -> None:
+def _image(config: pytest.Config) -> str:
+    image: str | None = config.getoption('hardware_image')
+    tag: str | None = config.getoption('hardware_tag')
+    if image is not None and tag is not None:
+        raise pytest.UsageError(
+            '--hardware-image and --hardware-tag exclude each other')
+    return image or f'{IMAGE_REPOSITORY}:{tag or DEFAULT_TAG}'
+
+
+def _stage_configuration(stage: Path, library: Path | None,
+                         port: int) -> None:
     """The configuration folder copied into the container."""
 
-    (stage / 'configuration.yaml').write_text(CONFIGURATION)
+    (stage / 'configuration.yaml').write_text(CONFIGURATION.format(port=port))
     target = stage / 'custom_components' / 'anker_prime'
     shutil.copytree(INTEGRATION, target, ignore=COPY_IGNORED)
     if library is not None:
