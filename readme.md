@@ -199,6 +199,48 @@ Before a release, run Home Assistant's `hassfest` and the HACS checks on
 GitHub: Actions → Validate → Run workflow. Changes are listed in
 [changelog.md](changelog.md).
 
+### Tests on a real 250W
+
+`hardware/` tests the integration end to end, in a real Home Assistant. It
+starts a Home Assistant container, installs this working copy of the
+integration, adds the charger with the email and password stored by the
+library's `ankerprime login`, and enables every entity except the energy
+reset. Then it changes each setting that can be put back, through the
+integration's entities and actions, checks what Home Assistant reports after
+a refresh and restores the original value. The last test compares every
+touched value with the state found at the start. At the end the entry and
+the container are removed, its volume included.
+
+Run it on the host, next to Docker. The library's development environment
+has everything it needs (or install `hardware/requirements.txt`):
+
+```bash
+pytest hardware -rs
+```
+
+Writes that cannot be undone are never made. No own picture is shown on the
+charger: an uploaded test picture is deleted from the account again. Schedule
+slots that were never set are skipped, since the charger has no "unset" value
+to restore. Outputs are switched only when one is on and powers nothing.
+Settings stored in the Anker account are read back by reloading the entry, so
+a run takes several minutes. Mainland China (SMS) accounts and the 160W are
+not covered.
+
+| Option                       | Default                                        | Meaning                                                                          |
+|------------------------------|------------------------------------------------|----------------------------------------------------------------------------------|
+| `--hardware-serial=SERIAL`   | the CLI's default charger, else the only one   | Charger to test                                                                  |
+| `--hardware-image=IMAGE`     | `ghcr.io/home-assistant/home-assistant:stable` | Home Assistant image, pulled when missing (`docker pull` for a newer one)        |
+| `--hardware-library=PATH`    | the released version                           | Library working copy to install in the container instead                         |
+| `--hardware-settle=SECONDS`  | 5                                              | Wait for a read-back after a refresh                                             |
+| `--hardware-timeout=SECONDS` | 300                                            | Limit for Home Assistant to start and for the entry to load                      |
+| `--hardware-keep`            | off                                            | Keep the container and the entry afterwards; the address and sign-in are printed |
+
+Write option values with `=`: pytest reads a separate value as a path to
+collect tests from. Home Assistant's log, with the integration and the
+library at debug level, is saved in pytest's temporary folder; its path is
+printed at the end. The container connects to the Anker cloud directly, with
+its own sign-in; the CLI's login stays valid.
+
 ### Unreleased library versions
 
 To try library changes before they are on PyPI, build a wheel

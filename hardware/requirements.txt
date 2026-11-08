@@ -1,0 +1,5 @@
+# Runs on the host, next to Docker: the library (for the CLI's stored login)
+# and pytest. The library's own development environment has all of these.
+anker-prime-driver>=0.8.0
+pytest>=8
+pytest-asyncio>=0.24

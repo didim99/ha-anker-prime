@@ -27,7 +27,7 @@ ignore = ["B027"]
 
 [tool.mypy]
 python_version = "3.13"
-files = ["custom_components", "tests"]
+files = ["custom_components", "tests", "hardware"]
 # custom_components/ is a namespace package, as in a Home Assistant config dir.
 explicit_package_bases = true
 
