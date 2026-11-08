@@ -35,9 +35,10 @@ The remaining features of the library's 0.8.0 release.
 - Picture actions read image files from folders Home Assistant allows.
 
 ### Changed
-- Requires `anker-prime-driver[ble,pictures]==0.8.0`: the account is built
+- Requires `anker-prime-driver[ble,pictures]==0.8.1`: the account is built
   with the library's `AccountOptions`; country choices follow its
   `PHONE_REGIONS`; Pillow (shipped with Home Assistant) prepares pictures.
+  0.8.1 makes the time over own pictures switch reliable.
 - Diagnostics also redact the phone number.
 
 ## [0.2.3] - 2026-11-07
